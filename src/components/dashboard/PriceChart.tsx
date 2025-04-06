@@ -101,21 +101,21 @@ const PriceChart = () => {
           </Tabs>
           
           <div className="hidden sm:flex">
-            <TabsList className="bg-background">
-              {timeframes.map((timeframe) => (
-                <TabsTrigger
-                  key={timeframe.value}
-                  value={timeframe.value}
-                  onClick={() => setActiveTimeframe(timeframe.value)}
-                  className={activeTimeframe === timeframe.value ? 'bg-primary text-primary-foreground' : ''}
-                >
-                  {timeframe.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+            {/* Fixed: Wrapped TabsList in Tabs component */}
+            <Tabs value={activeTimeframe} onValueChange={setActiveTimeframe}>
+              <TabsList className="bg-background">
+                {timeframes.map((timeframe) => (
+                  <TabsTrigger
+                    key={timeframe.value}
+                    value={timeframe.value}
+                  >
+                    {timeframe.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
           </div>
           
-          {/* Fixed: Moved className prop to SelectTrigger instead of Select */}
           <Select value={activeTimeframe} onValueChange={setActiveTimeframe}>
             <SelectTrigger className="w-16 bg-background sm:hidden">
               <SelectValue />
