@@ -115,8 +115,9 @@ const PriceChart = () => {
             </TabsList>
           </div>
           
-          <Select value={activeTimeframe} onValueChange={setActiveTimeframe} className="sm:hidden">
-            <SelectTrigger className="w-16 bg-background">
+          {/* Fixed: Moved className prop to SelectTrigger instead of Select */}
+          <Select value={activeTimeframe} onValueChange={setActiveTimeframe}>
+            <SelectTrigger className="w-16 bg-background sm:hidden">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
