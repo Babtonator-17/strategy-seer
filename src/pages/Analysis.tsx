@@ -1,209 +1,259 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  BarChart, 
-  Bar, 
-  LineChart, 
-  Line, 
-  PieChart, 
-  Pie, 
-  Cell,
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
 } from 'recharts';
+import { Button } from '@/components/ui/button';
+import { ArrowRight } from 'lucide-react';
 
-// Sample data for charts
-const profitByInstrumentData = [
-  { name: 'BTCUSD', profit: 1250 },
-  { name: 'ETHUSD', profit: 850 },
-  { name: 'EURUSD', profit: -320 },
-  { name: 'XAUUSD', profit: 540 },
-  { name: 'USDJPY', profit: -230 },
+// Mock data for strategy performance
+const strategyPerformanceData = [
+  { name: 'Jan', profit: 450, trades: 24 },
+  { name: 'Feb', profit: -280, trades: 18 },
+  { name: 'Mar', profit: 320, trades: 22 },
+  { name: 'Apr', profit: 580, trades: 27 },
+  { name: 'May', profit: -120, trades: 15 },
+  { name: 'Jun', profit: 740, trades: 30 },
 ];
 
-const tradesByTypeData = [
-  { name: 'Buy', value: 65 },
-  { name: 'Sell', value: 35 },
+// Mock data for win/loss ratio
+const winLossData = [
+  { name: 'Mon', wins: 12, losses: 5 },
+  { name: 'Tue', wins: 8, losses: 7 },
+  { name: 'Wed', wins: 15, losses: 3 },
+  { name: 'Thu', wins: 10, losses: 8 },
+  { name: 'Fri', wins: 14, losses: 4 },
 ];
 
-const COLORS = ['#0088FE', '#FF8042'];
-
-const monthlyPerformanceData = [
-  { month: 'Jan', profit: 850 },
-  { month: 'Feb', profit: -320 },
-  { month: 'Mar', profit: 1200 },
-  { month: 'Apr', profit: 890 },
-  { month: 'May', profit: -480 },
-  { month: 'Jun', profit: 1450 },
+// Mock data for trade analysis
+const tradeAnalysisData = [
+  {
+    strategy: "Moving Average Crossover",
+    winRate: 68,
+    avgProfit: 32.5,
+    avgLoss: -18.2,
+    totalTrades: 45,
+    profitFactor: 2.4,
+  },
+  {
+    strategy: "RSI Divergence",
+    winRate: 72,
+    avgProfit: 45.8,
+    avgLoss: -25.3,
+    totalTrades: 36,
+    profitFactor: 2.8,
+  },
+  {
+    strategy: "Breakout Strategy",
+    winRate: 58,
+    avgProfit: 58.2,
+    avgLoss: -28.7,
+    totalTrades: 52,
+    profitFactor: 1.9,
+  },
+  {
+    strategy: "Support/Resistance",
+    winRate: 65,
+    avgProfit: 37.9,
+    avgLoss: -22.1,
+    totalTrades: 48,
+    profitFactor: 2.1,
+  },
 ];
 
 const Analysis = () => {
+  const [timeFrame, setTimeFrame] = useState('weekly');
+  
   return (
     <DashboardLayout>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Trading Performance Analysis</h1>
-        <p className="text-muted-foreground">Analyze your trading history and performance metrics</p>
+        <h1 className="text-2xl font-bold">Performance Analysis</h1>
+        <p className="text-muted-foreground">Analyze your trading performance and strategy effectiveness</p>
       </div>
       
-      <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="instruments">By Instrument</TabsTrigger>
-          <TabsTrigger value="strategies">By Strategy</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="overview" className="space-y-6 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Trades</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">124</div>
-                <p className="text-xs text-muted-foreground">+12 this month</p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">68%</div>
-                <p className="text-xs text-green-500">+3% vs last month</p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Profit Factor</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">1.74</div>
-                <p className="text-xs text-muted-foreground">Ratio of wins to losses</p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Profit</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-500">$3,590</div>
-                <p className="text-xs text-muted-foreground">Last 6 months</p>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Monthly Performance</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={monthlyPerformanceData}
-                      margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip formatter={(value) => [`$${value}`, 'Profit/Loss']} />
-                      <Bar 
-                        dataKey="profit" 
-                        name="Profit/Loss"
-                        fill={(entry) => (entry.profit > 0 ? 'hsl(var(--success))' : 'hsl(var(--destructive))')}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Trade Types</CardTitle>
-              </CardHeader>
-              <CardContent className="flex justify-center">
-                <div className="h-[300px] w-full max-w-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={tradesByTypeData}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={100}
-                        dataKey="value"
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {tradesByTypeData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => [value, 'Trades']} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="instruments" className="py-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Profit by Instrument</CardTitle>
-              <CardDescription>
-                Performance breakdown by trading instrument
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={profitByInstrumentData}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => [`$${value}`, 'Profit/Loss']} />
-                    <Bar 
-                      dataKey="profit" 
-                      name="Profit/Loss"
-                      fill={(entry) => (entry.profit > 0 ? 'hsl(var(--success))' : 'hsl(var(--destructive))')}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="strategies" className="py-4">
-          <Card>
-            <CardHeader>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        {/* Strategy Performance Card */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
               <CardTitle>Strategy Performance</CardTitle>
-              <CardDescription>
-                Connect a broker account to view strategy performance data
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-center items-center h-[300px]">
-                <p className="text-muted-foreground">No strategy performance data available</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              <Select defaultValue="1m" className="w-[80px]">
+                <SelectTrigger>
+                  <SelectValue placeholder="Period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1w">1W</SelectItem>
+                  <SelectItem value="1m">1M</SelectItem>
+                  <SelectItem value="3m">3M</SelectItem>
+                  <SelectItem value="1y">1Y</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={strategyPerformanceData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar 
+                  dataKey="profit" 
+                  fill={(entry) => entry.profit >= 0 ? "hsl(var(--success))" : "hsl(var(--destructive))"}
+                  fillOpacity={0.8}
+                  strokeWidth={1}
+                  barSize={30}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        
+        {/* Win/Loss Ratio Card */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle>Win/Loss Ratio</CardTitle>
+              <Tabs defaultValue={timeFrame} onValueChange={setTimeFrame}>
+                <TabsList>
+                  <TabsTrigger value="daily">D</TabsTrigger>
+                  <TabsTrigger value="weekly">W</TabsTrigger>
+                  <TabsTrigger value="monthly">M</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={winLossData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar 
+                  dataKey="wins" 
+                  name="Wins" 
+                  fill="hsl(var(--success))"
+                  barSize={20}
+                />
+                <Bar 
+                  dataKey="losses" 
+                  name="Losses" 
+                  fill="hsl(var(--destructive))"
+                  barSize={20}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Trading Strategies Analysis */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Trading Strategies Analysis</CardTitle>
+          <CardDescription>Performance metrics for your active trading strategies</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="px-4 py-3 text-left font-medium">Strategy</th>
+                  <th className="px-4 py-3 text-right font-medium">Win Rate</th>
+                  <th className="px-4 py-3 text-right font-medium">Avg Profit</th>
+                  <th className="px-4 py-3 text-right font-medium">Avg Loss</th>
+                  <th className="px-4 py-3 text-right font-medium">Total Trades</th>
+                  <th className="px-4 py-3 text-right font-medium">Profit Factor</th>
+                  <th className="px-4 py-3 text-right font-medium"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tradeAnalysisData.map((item, index) => (
+                  <tr key={index} className="border-b">
+                    <td className="px-4 py-3 font-medium">{item.strategy}</td>
+                    <td className="px-4 py-3 text-right">{item.winRate}%</td>
+                    <td className="px-4 py-3 text-right text-green-600">${item.avgProfit}</td>
+                    <td className="px-4 py-3 text-right text-red-600">${item.avgLoss}</td>
+                    <td className="px-4 py-3 text-right">{item.totalTrades}</td>
+                    <td className="px-4 py-3 text-right">{item.profitFactor}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Button variant="ghost" size="sm">
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Bottom charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Profit Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={strategyPerformanceData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Line 
+                  type="monotone" 
+                  dataKey="profit" 
+                  stroke="hsl(var(--primary))" 
+                  activeDot={{ r: 8 }}
+                  strokeWidth={2}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Trading Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={strategyPerformanceData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar 
+                  dataKey="trades" 
+                  name="Number of Trades" 
+                  fill="hsl(var(--primary))"
+                  fillOpacity={0.7}
+                  barSize={30}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
     </DashboardLayout>
   );
 };
