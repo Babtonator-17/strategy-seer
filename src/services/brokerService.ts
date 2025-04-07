@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { TradeHistory, BrokerConnection } from "@/types/supabase";
 
@@ -161,25 +160,26 @@ export const placeOrder = async (order: OrderParams): Promise<any> => {
     const { data: sessionData } = await supabase.auth.getSession();
     
     if (sessionData.session) {
+      const userId = sessionData.session.user.id;
+      
       // Insert the trade into the trade_history table
       await supabase
         .from('trade_history')
-        .insert([
-          {
-            broker_connection_id: currentBrokerConnectionId,
-            instrument: order.instrument,
-            direction: order.type,
-            volume: order.volume,
-            open_price: executionPrice,
-            status: 'open',
-            open_time: new Date().toISOString(),
-            metadata: {
-              stopLoss: order.stopLoss,
-              takeProfit: order.takeProfit,
-              comment: order.comment
-            }
+        .insert({
+          user_id: userId,
+          broker_connection_id: currentBrokerConnectionId,
+          instrument: order.instrument,
+          direction: order.type,
+          volume: order.volume,
+          open_price: executionPrice,
+          status: 'open',
+          open_time: new Date().toISOString(),
+          metadata: {
+            stopLoss: order.stopLoss,
+            takeProfit: order.takeProfit,
+            comment: order.comment
           }
-        ]);
+        });
     }
   } catch (error) {
     console.error('Error saving trade to history:', error);
