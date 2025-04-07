@@ -9,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AssistantConversation } from '@/types/supabase';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/providers/AuthProvider';
+import { Link } from 'react-router-dom';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -18,12 +20,12 @@ interface Message {
 
 export const AITradingAssistant = () => {
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const isMobile = useIsMobile();
   
   const welcomeMessage: Message = {
@@ -31,20 +33,6 @@ export const AITradingAssistant = () => {
     content: 'Hello! I\'m your AI trading assistant. I can help you with trading strategies, broker connections, and market analysis. How can I assist you today?',
     timestamp: new Date().toISOString()
   };
-  
-  useEffect(() => {
-    // Check if user is authenticated
-    const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        setIsAuthenticated(true);
-      } else {
-        setIsAuthenticated(false);
-      }
-    };
-    
-    checkAuth();
-  }, []);
   
   useEffect(() => {
     // Initialize with welcome message if no messages
@@ -59,7 +47,7 @@ export const AITradingAssistant = () => {
   useEffect(() => {
     // Fetch conversation history if authenticated
     const fetchConversation = async () => {
-      if (!isAuthenticated) return;
+      if (!user) return;
       
       try {
         // Get the most recent conversation
@@ -90,7 +78,7 @@ export const AITradingAssistant = () => {
     };
     
     fetchConversation();
-  }, [isAuthenticated]);
+  }, [user]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,7 +86,7 @@ export const AITradingAssistant = () => {
     if (!query.trim()) return;
     
     // Don't proceed if not authenticated
-    if (!isAuthenticated) {
+    if (!user) {
       toast({
         title: "Authentication Required",
         description: "Please log in to use the AI assistant",
@@ -220,15 +208,26 @@ export const AITradingAssistant = () => {
       </CardContent>
       
       <CardFooter>
-        {!isAuthenticated ? (
-          <div className="w-full text-center p-3 bg-amber-900/20 border border-amber-900/30 rounded-md">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <AlertCircle className="h-5 w-5 text-amber-500" />
-              <p className="font-medium text-amber-500">Login Required</p>
+        {!user && !authLoading ? (
+          <div className="w-full space-y-3">
+            <div className="text-center p-3 bg-amber-900/20 border border-amber-900/30 rounded-md">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <AlertCircle className="h-5 w-5 text-amber-500" />
+                <p className="font-medium text-amber-500">Login Required</p>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Please sign in to use the AI assistant
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Please sign in to use the AI assistant
-            </p>
+            <Button className="w-full" asChild>
+              <Link to="/auth">
+                Login or Create Account
+              </Link>
+            </Button>
+          </div>
+        ) : authLoading ? (
+          <div className="w-full flex justify-center p-4">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="w-full flex gap-2">
