@@ -1,12 +1,14 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Loader2, Bot, User } from 'lucide-react';
+import { Send, Loader2, Bot, User, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AssistantConversation } from '@/types/supabase';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -22,6 +24,7 @@ export const AITradingAssistant = () => {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const isMobile = useIsMobile();
   
   const welcomeMessage: Message = {
     role: 'assistant',
@@ -186,10 +189,10 @@ export const AITradingAssistant = () => {
                 <div 
                   className={`
                     ${msg.role === 'user' 
-                      ? 'bg-primary text-primary-foreground ml-12' 
-                      : 'bg-muted text-foreground mr-12'
+                      ? 'bg-primary text-primary-foreground ml-6 md:ml-12' 
+                      : 'bg-muted text-foreground mr-6 md:mr-12'
                     } 
-                    rounded-lg p-3 max-w-[80%]
+                    rounded-lg p-3 max-w-[85%] md:max-w-[80%]
                   `}
                 >
                   <div className="flex items-start gap-2">
@@ -217,17 +220,30 @@ export const AITradingAssistant = () => {
       </CardContent>
       
       <CardFooter>
-        <form onSubmit={handleSubmit} className="w-full flex gap-2">
-          <Input
-            placeholder="Ask a question about trading..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            disabled={loading || !isAuthenticated}
-          />
-          <Button type="submit" disabled={loading || !query.trim() || !isAuthenticated}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </Button>
-        </form>
+        {!isAuthenticated ? (
+          <div className="w-full text-center p-3 bg-amber-900/20 border border-amber-900/30 rounded-md">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <AlertCircle className="h-5 w-5 text-amber-500" />
+              <p className="font-medium text-amber-500">Login Required</p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Please sign in to use the AI assistant
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="w-full flex gap-2">
+            <Input
+              placeholder={isMobile ? "Ask a question..." : "Ask a question about trading..."}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              disabled={loading}
+              className="flex-grow"
+            />
+            <Button type="submit" disabled={loading || !query.trim()}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
+          </form>
+        )}
       </CardFooter>
     </Card>
   );
