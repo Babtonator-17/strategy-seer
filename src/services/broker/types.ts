@@ -1,6 +1,4 @@
 
-import { Json } from "@/types/supabase";
-
 /**
  * Different broker connection types
  */
@@ -77,3 +75,14 @@ export interface Position {
   takeProfit?: number;
   accountType: string;
 }
+
+/**
+ * JSON data type for metadata
+ */
+export type Json = 
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
