@@ -9,13 +9,189 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      assistant_conversations: {
+        Row: {
+          created_at: string | null
+          id: string
+          messages: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          messages?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          messages?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      broker_connections: {
+        Row: {
+          account_id: string | null
+          api_key: string | null
+          api_secret: string | null
+          broker_name: string
+          broker_type: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          login: string | null
+          metadata: Json | null
+          server: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          api_key?: string | null
+          api_secret?: string | null
+          broker_name: string
+          broker_type: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          login?: string | null
+          metadata?: Json | null
+          server?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          api_key?: string | null
+          api_secret?: string | null
+          broker_name?: string
+          broker_type?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          login?: string | null
+          metadata?: Json | null
+          server?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trade_history: {
+        Row: {
+          broker_connection_id: string | null
+          close_price: number | null
+          close_time: string | null
+          created_at: string | null
+          direction: string
+          id: string
+          instrument: string
+          metadata: Json | null
+          open_price: number
+          open_time: string
+          profit_loss: number | null
+          status: string
+          updated_at: string | null
+          user_id: string
+          volume: number
+        }
+        Insert: {
+          broker_connection_id?: string | null
+          close_price?: number | null
+          close_time?: string | null
+          created_at?: string | null
+          direction: string
+          id?: string
+          instrument: string
+          metadata?: Json | null
+          open_price: number
+          open_time: string
+          profit_loss?: number | null
+          status: string
+          updated_at?: string | null
+          user_id: string
+          volume: number
+        }
+        Update: {
+          broker_connection_id?: string | null
+          close_price?: number | null
+          close_time?: string | null
+          created_at?: string | null
+          direction?: string
+          id?: string
+          instrument?: string
+          metadata?: Json | null
+          open_price?: number
+          open_time?: string
+          profit_loss?: number | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+          volume?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_history_broker_connection_id_fkey"
+            columns: ["broker_connection_id"]
+            isOneToOne: false
+            referencedRelation: "broker_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_broker_connection: {
+        Args: {
+          p_broker_type: string
+          p_broker_name: string
+          p_server?: string
+          p_api_key?: string
+          p_api_secret?: string
+          p_account_id?: string
+          p_login?: string
+          p_metadata?: Json
+        }
+        Returns: string
+      }
+      decrypt_broker_credentials: {
+        Args: { connection_id: string }
+        Returns: {
+          id: string
+          broker_type: string
+          api_key: string
+          api_secret: string
+          login: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

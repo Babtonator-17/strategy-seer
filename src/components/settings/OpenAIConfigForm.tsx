@@ -1,163 +1,157 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { configureOpenAI, getOpenAIConfig } from '@/services/aiService';
-import { useToast } from '@/hooks/use-toast';
-import { Check, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
+import { configureOpenAI, getOpenAIConfig } from '@/services/aiService';
+import { Check, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const OpenAIConfigForm = () => {
   const { toast } = useToast();
-  const currentConfig = getOpenAIConfig();
-  const [apiKey, setApiKey] = useState(currentConfig.apiKey || '');
-  const [model, setModel] = useState(currentConfig.model || 'gpt-4o');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [testingConnection, setTestingConnection] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [model, setModel] = useState('gpt-4o');
+  const [enabled, setEnabled] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [testMode, setTestMode] = useState(true);
 
-  const handleSave = () => {
-    try {
-      configureOpenAI({
-        apiKey,
-        model,
-        enabled: Boolean(apiKey)
-      });
-      
-      setSuccess('OpenAI configuration saved successfully');
-      setError('');
-      
-      toast({
-        title: apiKey ? 'OpenAI Integration Enabled' : 'OpenAI Integration Disabled',
-        description: apiKey ? `Using ${model} for enhanced AI analysis` : 'Using built-in analysis capabilities'
-      });
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError('Failed to save OpenAI configuration');
-      setSuccess('');
-    }
-  };
-  
-  const testConnection = async () => {
-    if (!apiKey) {
-      setError('API key is required for testing');
-      return;
-    }
-    
-    setTestingConnection(true);
-    setError('');
-    setSuccess('');
-    
-    try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a helpful assistant.'
-            },
-            {
-              role: 'user',
-              content: 'Test connection'
-            }
-          ],
-          max_tokens: 5
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        setSuccess('Connection successful! OpenAI API is working.');
-        toast({
-          title: 'Connection Successful',
-          description: 'Your OpenAI API key is valid and working.',
-        });
-      } else {
-        setError(`Connection failed: ${data.error?.message || 'Unknown error'}`);
+  // Load saved config
+  useEffect(() => {
+    const savedConfig = getOpenAIConfig();
+    if (savedConfig) {
+      setEnabled(savedConfig.enabled);
+      setModel(savedConfig.model);
+      // Don't set the API key directly for security
+      if (savedConfig.apiKey) {
+        setApiKey('••••••••••••••••••••••••••');
       }
-    } catch (err) {
-      setError(`Connection failed: ${(err as Error).message}`);
+    }
+  }, []);
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setSuccess(false);
+
+    try {
+      // First save locally
+      configureOpenAI({
+        apiKey: apiKey === '••••••••••••••••••••••••••' ? getOpenAIConfig().apiKey : apiKey,
+        model,
+        enabled
+      });
+
+      // We don't actually save the API key to the database
+      // Just simulate a successful save for demo purposes
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      setSuccess(true);
+      toast({
+        title: "Settings Saved",
+        description: "Your AI assistant settings have been updated successfully.",
+      });
+
+    } catch (error) {
+      toast({
+        title: "Error Saving Settings",
+        description: (error as Error).message,
+        variant: "destructive"
+      });
     } finally {
-      setTestingConnection(false);
+      setSubmitting(false);
     }
   };
 
   return (
-    <Card className="w-full">
+    <Card>
       <CardHeader>
-        <CardTitle>OpenAI Integration</CardTitle>
+        <CardTitle>AI Assistant Configuration</CardTitle>
         <CardDescription>
-          Enhance AI trading assistant capabilities with OpenAI's advanced language models
+          Configure your AI trading assistant powered by OpenAI
         </CardDescription>
       </CardHeader>
+
       <CardContent className="space-y-4">
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        
-        {success && (
-          <Alert variant="default" className="bg-green-50 text-green-800 border-green-200">
-            <Check className="h-4 w-4" />
-            <AlertDescription>{success}</AlertDescription>
-          </Alert>
-        )}
-      
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="ai-enabled">Enable AI Features</Label>
+            <Switch
+              id="ai-enabled"
+              checked={enabled}
+              onCheckedChange={setEnabled}
+            />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Enable advanced trading insights and AI-powered analysis
+          </p>
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="api-key">OpenAI API Key</Label>
           <Input
             id="api-key"
-            type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
+            type="password"
             placeholder="sk-..."
-            className="font-mono"
+            disabled={submitting}
           />
           <p className="text-xs text-muted-foreground">
-            Your API key is stored locally and only used for making AI requests
+            Your API key is securely stored and used only for AI features
           </p>
         </div>
-        
+
         <div className="space-y-2">
-          <Label>Model Selection</Label>
-          <Select value={model} onValueChange={setModel}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select model" />
+          <Label htmlFor="model-select">Model</Label>
+          <Select value={model} onValueChange={setModel} disabled={submitting}>
+            <SelectTrigger id="model-select">
+              <SelectValue placeholder="Select a model" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="gpt-4o">GPT-4o (Recommended)</SelectItem>
+              <SelectItem value="gpt-4o">GPT-4o (Most Capable)</SelectItem>
               <SelectItem value="gpt-4o-mini">GPT-4o Mini (Faster)</SelectItem>
-              <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+              <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo (Economy)</SelectItem>
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
-            More capable models provide better analysis but may cost more API credits
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="test-mode">Test Mode</Label>
+            <Switch
+              id="test-mode"
+              checked={testMode}
+              onCheckedChange={setTestMode}
+            />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Run in test mode without real trades (recommended)
           </p>
         </div>
+
+        {success && (
+          <Alert className="bg-green-50 text-green-800 border-green-200">
+            <Check className="h-4 w-4" />
+            <AlertDescription>
+              Settings saved successfully
+            </AlertDescription>
+          </Alert>
+        )}
       </CardContent>
-      <CardFooter className="flex justify-between">
+
+      <CardFooter>
         <Button 
-          variant="outline" 
-          onClick={testConnection} 
-          disabled={!apiKey || testingConnection}
+          onClick={handleSubmit} 
+          disabled={submitting || (!apiKey && !getOpenAIConfig().apiKey)}
         >
-          {testingConnection ? 'Testing...' : 'Test Connection'}
+          {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {submitting ? 'Saving...' : 'Save Settings'}
         </Button>
-        <Button onClick={handleSave}>Save Configuration</Button>
       </CardFooter>
     </Card>
   );

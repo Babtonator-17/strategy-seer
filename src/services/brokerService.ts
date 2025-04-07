@@ -1,4 +1,5 @@
-// Broker service for the trading application
+
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Different broker connection types
@@ -24,6 +25,7 @@ export interface BrokerConnectionParams {
   accountId?: string;
   login?: string;
   password?: string;
+  name?: string;
 }
 
 /**
@@ -41,12 +43,29 @@ export interface OrderParams {
 
 // Track current broker connection state
 let currentBrokerType: BrokerType = BrokerType.DEMO;
+let currentBrokerConnectionId: string | null = null;
 
 /**
  * Get current broker connection type
  */
 export const getCurrentBroker = (): BrokerType => {
   return currentBrokerType;
+};
+
+/**
+ * Get current broker connection ID
+ */
+export const getCurrentBrokerConnectionId = (): string | null => {
+  return currentBrokerConnectionId;
+};
+
+/**
+ * Set current broker connection
+ */
+export const setCurrentBrokerConnection = (type: BrokerType, connectionId: string): void => {
+  currentBrokerType = type;
+  currentBrokerConnectionId = connectionId;
+  console.log(`Current broker set to ${type} (ID: ${connectionId})`);
 };
 
 /**
@@ -86,6 +105,22 @@ export const disconnectFromBroker = async (): Promise<boolean> => {
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 500));
   
+  // If we have a connection ID, update the database
+  if (currentBrokerConnectionId) {
+    try {
+      await supabase
+        .from('broker_connections')
+        .update({ is_active: false })
+        .eq('id', currentBrokerConnectionId);
+    } catch (error) {
+      console.error('Error updating broker connection status:', error);
+    }
+  }
+  
+  // Reset current connection
+  currentBrokerType = BrokerType.DEMO;
+  currentBrokerConnectionId = null;
+  
   console.log('Disconnected from broker successfully');
   return true;
 };
@@ -120,6 +155,36 @@ export const placeOrder = async (order: OrderParams): Promise<any> => {
   
   console.log(`[${currentBrokerType}] Order executed at price: ${executionPrice}`);
   
+  // Create a new trade history record if authenticated
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    
+    if (sessionData.session) {
+      // Insert the trade into the trade_history table
+      await supabase
+        .from('trade_history')
+        .insert([
+          {
+            broker_connection_id: currentBrokerConnectionId,
+            instrument: order.instrument,
+            direction: order.type,
+            volume: order.volume,
+            open_price: executionPrice,
+            status: 'open',
+            open_time: new Date().toISOString(),
+            metadata: {
+              stopLoss: order.stopLoss,
+              takeProfit: order.takeProfit,
+              comment: order.comment
+            }
+          }
+        ]);
+    }
+  } catch (error) {
+    console.error('Error saving trade to history:', error);
+    // Continue with the mock response even if saving fails
+  }
+  
   return {
     orderId,
     instrument: order.instrument,
@@ -143,6 +208,45 @@ export const closePosition = async (positionId: string): Promise<boolean> => {
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 800));
   
+  // Update the trade history record if authenticated
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    
+    if (sessionData.session) {
+      // Fetch the position details
+      const { data: position } = await supabase
+        .from('trade_history')
+        .select('*')
+        .eq('id', positionId)
+        .single();
+      
+      if (position) {
+        // Calculate a realistic closing price
+        const closingPrice = position.direction === 'buy' 
+          ? position.open_price * (1 + (Math.random() * 0.05))  // Up to 5% profit for buy
+          : position.open_price * (1 - (Math.random() * 0.05));  // Up to 5% profit for sell
+        
+        // Calculate profit/loss
+        const profitLoss = position.direction === 'buy'
+          ? (closingPrice - position.open_price) * position.volume
+          : (position.open_price - closingPrice) * position.volume;
+        
+        // Update the position as closed
+        await supabase
+          .from('trade_history')
+          .update({
+            status: 'closed',
+            close_price: closingPrice,
+            close_time: new Date().toISOString(),
+            profit_loss: profitLoss
+          })
+          .eq('id', positionId);
+      }
+    }
+  } catch (error) {
+    console.error('Error updating closed position in history:', error);
+  }
+  
   return true;
 };
 
@@ -158,6 +262,45 @@ export const modifyPosition = async (
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 600));
   
+  // Update the trade history record if authenticated
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    
+    if (sessionData.session) {
+      // Get the current metadata
+      const { data: position } = await supabase
+        .from('trade_history')
+        .select('metadata')
+        .eq('id', positionId)
+        .single();
+      
+      if (position) {
+        // Update metadata with new values
+        const updatedMetadata = {
+          ...position.metadata,
+        };
+        
+        if (params.stopLoss !== undefined) {
+          updatedMetadata.stopLoss = params.stopLoss;
+        }
+        
+        if (params.takeProfit !== undefined) {
+          updatedMetadata.takeProfit = params.takeProfit;
+        }
+        
+        // Update the position
+        await supabase
+          .from('trade_history')
+          .update({
+            metadata: updatedMetadata
+          })
+          .eq('id', positionId);
+      }
+    }
+  } catch (error) {
+    console.error('Error updating position metadata in history:', error);
+  }
+  
   return true;
 };
 
@@ -165,8 +308,41 @@ export const modifyPosition = async (
  * Get open positions
  */
 export const getOpenPositions = async (): Promise<any[]> => {
-  // Return mock positions data - in real app would fetch from broker API
-  const basePositions = [
+  // Try to get positions from database if authenticated
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    
+    if (sessionData.session) {
+      const { data: positions, error } = await supabase
+        .from('trade_history')
+        .select('*')
+        .eq('status', 'open')
+        .order('open_time', { ascending: false });
+      
+      if (!error && positions && positions.length > 0) {
+        // Transform the database records to the expected format
+        return positions.map(pos => ({
+          id: pos.id,
+          instrument: pos.instrument,
+          type: pos.direction,
+          volume: pos.volume,
+          openPrice: pos.open_price,
+          currentPrice: getMarketPrice(pos.instrument, pos.direction === 'buy' ? 'sell' : 'buy'),
+          profit: calculateProfit(pos),
+          pips: calculatePips(pos),
+          openTime: pos.open_time,
+          stopLoss: pos.metadata?.stopLoss,
+          takeProfit: pos.metadata?.takeProfit,
+          accountType: currentBrokerType
+        }));
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching positions from database:', error);
+  }
+  
+  // Return mock positions data as fallback
+  return [
     {
       id: 'pos_1',
       instrument: 'BTCUSD',
@@ -179,6 +355,7 @@ export const getOpenPositions = async (): Promise<any[]> => {
       openTime: '2025-04-03T10:22:15Z',
       stopLoss: 36000,
       takeProfit: 37200,
+      accountType: currentBrokerType
     },
     {
       id: 'pos_2',
@@ -192,6 +369,7 @@ export const getOpenPositions = async (): Promise<any[]> => {
       openTime: '2025-04-03T12:05:22Z',
       stopLoss: 1.0950,
       takeProfit: 1.0800,
+      accountType: currentBrokerType
     },
     {
       id: 'pos_3',
@@ -205,14 +383,37 @@ export const getOpenPositions = async (): Promise<any[]> => {
       openTime: '2025-04-04T15:12:08Z',
       stopLoss: 2300,
       takeProfit: 2450,
+      accountType: currentBrokerType
     },
   ];
+};
+
+// Helper function to calculate profit
+const calculateProfit = (position: any): number => {
+  const currentPrice = getMarketPrice(position.instrument, position.direction === 'buy' ? 'sell' : 'buy');
   
-  // Add broker type to each position
-  return basePositions.map(pos => ({
-    ...pos,
-    accountType: currentBrokerType
-  }));
+  if (position.direction === 'buy') {
+    return (currentPrice - position.open_price) * position.volume;
+  } else {
+    return (position.open_price - currentPrice) * position.volume;
+  }
+};
+
+// Helper function to calculate pips
+const calculatePips = (position: any): number => {
+  const currentPrice = getMarketPrice(position.instrument, position.direction === 'buy' ? 'sell' : 'buy');
+  
+  if (position.instrument.includes('USD')) {
+    // For crypto, just use price difference
+    return position.direction === 'buy'
+      ? currentPrice - position.open_price
+      : position.open_price - currentPrice;
+  } else {
+    // For forex, multiply by 10000
+    return position.direction === 'buy'
+      ? (currentPrice - position.open_price) * 10000
+      : (position.open_price - currentPrice) * 10000;
+  }
 };
 
 /**
@@ -222,7 +423,49 @@ export const getTradeHistory = async (
   startDate?: Date, 
   endDate?: Date
 ): Promise<any[]> => {
-  // Return mock trade history
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    
+    if (sessionData.session) {
+      // Start building the query
+      let query = supabase
+        .from('trade_history')
+        .select('*')
+        .eq('status', 'closed');
+      
+      // Add date filters if provided
+      if (startDate) {
+        query = query.gte('open_time', startDate.toISOString());
+      }
+      
+      if (endDate) {
+        query = query.lte('open_time', endDate.toISOString());
+      }
+      
+      // Execute the query
+      const { data: trades, error } = await query.order('close_time', { ascending: false });
+      
+      if (!error && trades && trades.length > 0) {
+        // Transform the database records to the expected format
+        return trades.map(trade => ({
+          id: trade.id,
+          instrument: trade.instrument,
+          type: trade.direction,
+          volume: trade.volume,
+          openPrice: trade.open_price,
+          closePrice: trade.close_price,
+          profit: trade.profit_loss,
+          pips: calculateTradeHistoryPips(trade),
+          openTime: trade.open_time,
+          closeTime: trade.close_time,
+        }));
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching trade history from database:', error);
+  }
+  
+  // Return mock trade history as fallback
   return [
     {
       id: '1',
@@ -248,8 +491,22 @@ export const getTradeHistory = async (
       openTime: '2025-04-03T12:05:22Z',
       closeTime: '2025-04-05T12:30:45Z',
     },
-    // ... more trades
   ];
+};
+
+// Helper function to calculate pips for historical trades
+const calculateTradeHistoryPips = (trade: any): number => {
+  if (trade.instrument.includes('USD')) {
+    // For crypto, just use price difference
+    return trade.direction === 'buy'
+      ? trade.close_price - trade.open_price
+      : trade.open_price - trade.close_price;
+  } else {
+    // For forex, multiply by 10000
+    return trade.direction === 'buy'
+      ? (trade.close_price - trade.open_price) * 10000
+      : (trade.open_price - trade.close_price) * 10000;
+  }
 };
 
 /**

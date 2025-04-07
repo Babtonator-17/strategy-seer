@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { placeOrder, OrderParams, getAccountInfo } from '@/services/brokerService';
 import { AlertCircle, ArrowDown, ArrowUp, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/integrations/supabase/client';
 
 interface BrokerTradingInterfaceProps {
   instrumentName?: string;
@@ -40,26 +41,73 @@ export const BrokerTradingInterface = ({
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accountInfo, setAccountInfo] = useState<any>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [activeBrokerConnections, setActiveBrokerConnections] = useState<any[]>([]);
+  const [selectedBrokerId, setSelectedBrokerId] = useState<string | null>(null);
   
   // Get current instrument from the list
   const currentInstrument = instruments.find(i => i.name === instrument) || instruments[0];
   
-  // Fetch account information
+  // Check authentication and load data
   useEffect(() => {
-    const fetchAccountInfo = async () => {
-      try {
-        const info = await getAccountInfo();
-        setAccountInfo(info);
-      } catch (err) {
-        console.error('Failed to fetch account info:', err);
+    const checkAuthAndLoadData = async () => {
+      const { data } = await supabase.auth.getSession();
+      setIsAuthenticated(data.session !== null);
+      
+      if (data.session) {
+        fetchAccountInfo();
+        fetchActiveBrokerConnections();
       }
     };
     
-    fetchAccountInfo();
+    checkAuthAndLoadData();
   }, []);
+  
+  // Fetch account information
+  const fetchAccountInfo = async () => {
+    try {
+      const info = await getAccountInfo();
+      setAccountInfo(info);
+    } catch (err) {
+      console.error('Failed to fetch account info:', err);
+    }
+  };
+  
+  // Fetch active broker connections
+  const fetchActiveBrokerConnections = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('broker_connections')
+        .select('*')
+        .eq('is_active', true);
+        
+      if (error) throw error;
+      
+      setActiveBrokerConnections(data || []);
+      
+      // Auto-select the first active connection if available
+      if (data && data.length > 0 && !selectedBrokerId) {
+        setSelectedBrokerId(data[0].id);
+      }
+    } catch (err) {
+      console.error('Failed to fetch broker connections:', err);
+    }
+  };
   
   const handleOrderSubmit = async () => {
     setError(null);
+    
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      setError("Please log in to place trades");
+      return;
+    }
+    
+    // Check if a broker is selected
+    if (!selectedBrokerId && activeBrokerConnections.length > 0) {
+      setError("Please select a broker connection");
+      return;
+    }
     
     // Validate inputs
     if (!instrument) {
@@ -128,6 +176,45 @@ export const BrokerTradingInterface = ({
       </CardHeader>
       
       <CardContent className="space-y-4">
+        {!isAuthenticated && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Please log in to access trading features
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {isAuthenticated && activeBrokerConnections.length === 0 && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              No active broker connections found. Please connect a broker in Settings.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {isAuthenticated && activeBrokerConnections.length > 0 && (
+          <div className="space-y-2">
+            <Label htmlFor="broker-connection">Broker Connection</Label>
+            <Select 
+              value={selectedBrokerId || ''} 
+              onValueChange={setSelectedBrokerId}
+            >
+              <SelectTrigger id="broker-connection">
+                <SelectValue placeholder="Select a broker connection" />
+              </SelectTrigger>
+              <SelectContent>
+                {activeBrokerConnections.map((connection) => (
+                  <SelectItem key={connection.id} value={connection.id}>
+                    {connection.broker_name} ({connection.broker_type})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        
         {/* Account Info */}
         {accountInfo && (
           <div className="grid grid-cols-2 gap-2 p-3 bg-muted rounded-lg mb-4">
@@ -263,7 +350,7 @@ export const BrokerTradingInterface = ({
         <Button 
           className="w-full" 
           onClick={handleOrderSubmit}
-          disabled={isPlacingOrder}
+          disabled={isPlacingOrder || !isAuthenticated || activeBrokerConnections.length === 0}
           variant={orderType === 'buy' ? 'default' : 'destructive'}
         >
           {isPlacingOrder && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
