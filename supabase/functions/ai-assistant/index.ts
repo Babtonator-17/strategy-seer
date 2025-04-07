@@ -7,12 +7,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const SYSTEM_PROMPT = `
+You are a helpful AI trading assistant. You help users with:
+1. Understanding trading strategies and concepts
+2. Answering questions about market analysis
+3. Providing guidance on broker connections and trading platform usage
+4. General information about financial instruments and markets
+
+Be concise, clear, and helpful. If you don't know something, be honest and suggest alternatives.
+Avoid giving specific investment advice that could be construed as financial recommendations.
+`;
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-  
+
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -45,88 +56,77 @@ serve(async (req) => {
       );
     }
 
-    // Get user's existing broker connections for context
-    const { data: brokerConnections } = await supabaseClient
-      .from('broker_connections')
-      .select('*')
-      .eq('user_id', session.user.id);
-
-    // Get user's trading history for context
-    const { data: recentTrades } = await supabaseClient
-      .from('trade_history')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    // Get or create conversation
-    let conversation;
-    if (conversationId) {
-      const { data } = await supabaseClient
-        .from('assistant_conversations')
-        .select('*')
-        .eq('id', conversationId)
-        .eq('user_id', session.user.id)
-        .single();
-      
-      conversation = data;
-    }
-
-    if (!conversation) {
-      const { data } = await supabaseClient
-        .from('assistant_conversations')
-        .insert([
-          { user_id: session.user.id, messages: [] }
-        ])
-        .select()
-        .single();
-      
-      conversation = data;
-    }
-
-    // Extract conversation context
-    const messages = conversation?.messages || [];
+    // For now, return a simple mock response
+    const mockResponse = generateMockResponse(query);
     
-    // Store user's query
-    messages.push({ role: 'user', content: query });
-
-    // Generate response (in a real app, this would use an LLM API)
-    let response = "";
-
-    // Simple rule-based responses for demo
-    if (query.toLowerCase().includes('connect') && query.toLowerCase().includes('broker')) {
-      response = "To connect a broker, navigate to the Settings page and select the Broker tab. You can then enter your API keys or login credentials for various brokers like MetaTrader, Binance, or OANDA.";
-    } else if (query.toLowerCase().includes('metatrader')) {
-      response = "MetaTrader integration allows you to connect your MT4 or MT5 accounts. You'll need your login credentials and server address from your broker. Once connected, you can execute trades directly from this platform.";
-    } else if (query.toLowerCase().includes('binance')) {
-      response = "To integrate with Binance, you'll need to create API keys from your Binance account. Make sure to enable trading permissions for the API key but restrict withdrawals for security.";
-    } else if (query.toLowerCase().includes('trading strategy') || query.toLowerCase().includes('strategy')) {
-      response = "I can help analyze different trading strategies based on your goals and risk tolerance. Would you like information about trend-following, mean-reversion, or breakout strategies?";
-    } else if (query.toLowerCase().includes('account') && query.toLowerCase().includes('management')) {
-      response = "For account management, you can view your connected brokers, check your portfolio balance, and manage risk parameters. Would you like specific help with position sizing or risk management?";
+    // Store the conversation in the database
+    let updatedConversationId = conversationId;
+    const userMessage = {
+      role: 'user',
+      content: query,
+      timestamp: new Date().toISOString()
+    };
+    
+    const assistantMessage = {
+      role: 'assistant',
+      content: mockResponse,
+      timestamp: new Date().toISOString()
+    };
+    
+    if (conversationId) {
+      // Update existing conversation
+      const { data: existingConversation, error: fetchError } = await supabaseClient
+        .from('assistant_conversations')
+        .select('messages')
+        .eq('id', conversationId)
+        .single();
+      
+      if (fetchError) {
+        console.error('Error fetching conversation:', fetchError);
+      } else {
+        const updatedMessages = [...(existingConversation.messages || []), userMessage, assistantMessage];
+        
+        const { error: updateError } = await supabaseClient
+          .from('assistant_conversations')
+          .update({ 
+            messages: updatedMessages,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', conversationId);
+          
+        if (updateError) {
+          console.error('Error updating conversation:', updateError);
+        }
+      }
     } else {
-      response = `I understand you're asking about "${query}". I can help with broker connections, trading strategies, platform navigation, and account management. Could you provide more details about what you need?`;
+      // Create a new conversation
+      const { data: newConversation, error: insertError } = await supabaseClient
+        .from('assistant_conversations')
+        .insert([{
+          user_id: session.user.id,
+          messages: [userMessage, assistantMessage],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }])
+        .select();
+      
+      if (insertError) {
+        console.error('Error creating new conversation:', insertError);
+      } else if (newConversation && newConversation.length > 0) {
+        updatedConversationId = newConversation[0].id;
+      }
     }
-
-    // Store assistant's response
-    messages.push({ role: 'assistant', content: response });
-
-    // Update conversation with new messages
-    await supabaseClient
-      .from('assistant_conversations')
-      .update({ messages, updated_at: new Date().toISOString() })
-      .eq('id', conversation.id);
-
+    
     return new Response(
-      JSON.stringify({
-        response,
-        conversationId: conversation.id
+      JSON.stringify({ 
+        response: mockResponse,
+        conversationId: updatedConversationId
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
     
   } catch (error) {
-    console.error('Error in ai-assistant function:', error);
+    console.error('Error in AI assistant function:', error);
     
     return new Response(
       JSON.stringify({ error: error.message }),
@@ -134,3 +134,26 @@ serve(async (req) => {
     );
   }
 });
+
+// Simple function to generate responses - in a real app, you'd call a language model
+function generateMockResponse(query: string): string {
+  const lowerQuery = query.toLowerCase();
+  
+  if (lowerQuery.includes('broker') || lowerQuery.includes('connect')) {
+    return "To connect a broker, go to Settings > Broker and select your broker type. You'll need to provide your API keys or login credentials, which are securely encrypted in our database. Currently, we support MT4, MT5, Binance, Oanda, and others.";
+  }
+  
+  if (lowerQuery.includes('strategy') || lowerQuery.includes('trading plan')) {
+    return "Creating a solid trading strategy is essential. Your strategy should include entry and exit rules, risk management parameters, and the markets you'll trade. Consider using our built-in strategy tools to backtest your ideas before trading real money.";
+  }
+  
+  if (lowerQuery.includes('risk') || lowerQuery.includes('management')) {
+    return "Risk management is crucial for long-term trading success. A general rule is to risk no more than 1-2% of your account on any single trade. You can set stop-loss levels in the trading interface to automatically limit potential losses.";
+  }
+  
+  if (lowerQuery.includes('chart') || lowerQuery.includes('analysis') || lowerQuery.includes('technical')) {
+    return "Our platform provides advanced charting tools with various indicators like RSI, MACD, and Bollinger Bands. To add these to your chart, visit the Analysis tab and select your preferred indicators from the toolbox on the right side of the screen.";
+  }
+  
+  return "I'm your AI trading assistant. I can help you with trading strategies, broker connections, market analysis, and platform navigation. Feel free to ask me specific questions about any of these topics.";
+}

@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { TradeHistory, BrokerConnection } from "@/types/supabase";
 
 /**
  * Different broker connection types
@@ -221,15 +222,16 @@ export const closePosition = async (positionId: string): Promise<boolean> => {
         .single();
       
       if (position) {
+        const tradePosition = position as TradeHistory;
         // Calculate a realistic closing price
-        const closingPrice = position.direction === 'buy' 
-          ? position.open_price * (1 + (Math.random() * 0.05))  // Up to 5% profit for buy
-          : position.open_price * (1 - (Math.random() * 0.05));  // Up to 5% profit for sell
+        const closingPrice = tradePosition.direction === 'buy' 
+          ? tradePosition.open_price * (1 + (Math.random() * 0.05))  // Up to 5% profit for buy
+          : tradePosition.open_price * (1 - (Math.random() * 0.05));  // Up to 5% profit for sell
         
         // Calculate profit/loss
-        const profitLoss = position.direction === 'buy'
-          ? (closingPrice - position.open_price) * position.volume
-          : (position.open_price - closingPrice) * position.volume;
+        const profitLoss = tradePosition.direction === 'buy'
+          ? (closingPrice - tradePosition.open_price) * tradePosition.volume
+          : (tradePosition.open_price - closingPrice) * tradePosition.volume;
         
         // Update the position as closed
         await supabase
@@ -275,9 +277,10 @@ export const modifyPosition = async (
         .single();
       
       if (position) {
+        const tradePosition = position as TradeHistory;
         // Update metadata with new values
         const updatedMetadata = {
-          ...position.metadata,
+          ...tradePosition.metadata,
         };
         
         if (params.stopLoss !== undefined) {
@@ -321,20 +324,23 @@ export const getOpenPositions = async (): Promise<any[]> => {
       
       if (!error && positions && positions.length > 0) {
         // Transform the database records to the expected format
-        return positions.map(pos => ({
-          id: pos.id,
-          instrument: pos.instrument,
-          type: pos.direction,
-          volume: pos.volume,
-          openPrice: pos.open_price,
-          currentPrice: getMarketPrice(pos.instrument, pos.direction === 'buy' ? 'sell' : 'buy'),
-          profit: calculateProfit(pos),
-          pips: calculatePips(pos),
-          openTime: pos.open_time,
-          stopLoss: pos.metadata?.stopLoss,
-          takeProfit: pos.metadata?.takeProfit,
-          accountType: currentBrokerType
-        }));
+        return positions.map(pos => {
+          const tradePosition = pos as unknown as TradeHistory;
+          return {
+            id: tradePosition.id,
+            instrument: tradePosition.instrument,
+            type: tradePosition.direction,
+            volume: tradePosition.volume,
+            openPrice: tradePosition.open_price,
+            currentPrice: getMarketPrice(tradePosition.instrument, tradePosition.direction === 'buy' ? 'sell' : 'buy'),
+            profit: calculateProfit(tradePosition),
+            pips: calculatePips(tradePosition),
+            openTime: tradePosition.open_time,
+            stopLoss: tradePosition.metadata?.stopLoss,
+            takeProfit: tradePosition.metadata?.takeProfit,
+            accountType: currentBrokerType
+          };
+        });
       }
     }
   } catch (error) {
@@ -389,7 +395,7 @@ export const getOpenPositions = async (): Promise<any[]> => {
 };
 
 // Helper function to calculate profit
-const calculateProfit = (position: any): number => {
+const calculateProfit = (position: TradeHistory): number => {
   const currentPrice = getMarketPrice(position.instrument, position.direction === 'buy' ? 'sell' : 'buy');
   
   if (position.direction === 'buy') {
@@ -400,7 +406,7 @@ const calculateProfit = (position: any): number => {
 };
 
 // Helper function to calculate pips
-const calculatePips = (position: any): number => {
+const calculatePips = (position: TradeHistory): number => {
   const currentPrice = getMarketPrice(position.instrument, position.direction === 'buy' ? 'sell' : 'buy');
   
   if (position.instrument.includes('USD')) {
@@ -447,18 +453,21 @@ export const getTradeHistory = async (
       
       if (!error && trades && trades.length > 0) {
         // Transform the database records to the expected format
-        return trades.map(trade => ({
-          id: trade.id,
-          instrument: trade.instrument,
-          type: trade.direction,
-          volume: trade.volume,
-          openPrice: trade.open_price,
-          closePrice: trade.close_price,
-          profit: trade.profit_loss,
-          pips: calculateTradeHistoryPips(trade),
-          openTime: trade.open_time,
-          closeTime: trade.close_time,
-        }));
+        return trades.map(trade => {
+          const tradeHistory = trade as unknown as TradeHistory;
+          return {
+            id: tradeHistory.id,
+            instrument: tradeHistory.instrument,
+            type: tradeHistory.direction,
+            volume: tradeHistory.volume,
+            openPrice: tradeHistory.open_price,
+            closePrice: tradeHistory.close_price,
+            profit: tradeHistory.profit_loss,
+            pips: calculateTradeHistoryPips(tradeHistory),
+            openTime: tradeHistory.open_time,
+            closeTime: tradeHistory.close_time,
+          };
+        });
       }
     }
   } catch (error) {
@@ -495,7 +504,9 @@ export const getTradeHistory = async (
 };
 
 // Helper function to calculate pips for historical trades
-const calculateTradeHistoryPips = (trade: any): number => {
+const calculateTradeHistoryPips = (trade: TradeHistory): number => {
+  if (!trade.close_price) return 0;
+  
   if (trade.instrument.includes('USD')) {
     // For crypto, just use price difference
     return trade.direction === 'buy'

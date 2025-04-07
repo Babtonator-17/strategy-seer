@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +11,7 @@ import { placeOrder, OrderParams, getAccountInfo } from '@/services/brokerServic
 import { AlertCircle, ArrowDown, ArrowUp, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
+import { BrokerConnection } from '@/types/supabase';
 
 interface BrokerTradingInterfaceProps {
   instrumentName?: string;
@@ -42,13 +42,11 @@ export const BrokerTradingInterface = ({
   const [error, setError] = useState<string | null>(null);
   const [accountInfo, setAccountInfo] = useState<any>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeBrokerConnections, setActiveBrokerConnections] = useState<any[]>([]);
+  const [activeBrokerConnections, setActiveBrokerConnections] = useState<BrokerConnection[]>([]);
   const [selectedBrokerId, setSelectedBrokerId] = useState<string | null>(null);
   
-  // Get current instrument from the list
   const currentInstrument = instruments.find(i => i.name === instrument) || instruments[0];
   
-  // Check authentication and load data
   useEffect(() => {
     const checkAuthAndLoadData = async () => {
       const { data } = await supabase.auth.getSession();
@@ -63,7 +61,6 @@ export const BrokerTradingInterface = ({
     checkAuthAndLoadData();
   }, []);
   
-  // Fetch account information
   const fetchAccountInfo = async () => {
     try {
       const info = await getAccountInfo();
@@ -73,7 +70,6 @@ export const BrokerTradingInterface = ({
     }
   };
   
-  // Fetch active broker connections
   const fetchActiveBrokerConnections = async () => {
     try {
       const { data, error } = await supabase
@@ -85,7 +81,6 @@ export const BrokerTradingInterface = ({
       
       setActiveBrokerConnections(data || []);
       
-      // Auto-select the first active connection if available
       if (data && data.length > 0 && !selectedBrokerId) {
         setSelectedBrokerId(data[0].id);
       }
@@ -97,19 +92,16 @@ export const BrokerTradingInterface = ({
   const handleOrderSubmit = async () => {
     setError(null);
     
-    // Check if user is authenticated
     if (!isAuthenticated) {
       setError("Please log in to place trades");
       return;
     }
     
-    // Check if a broker is selected
     if (!selectedBrokerId && activeBrokerConnections.length > 0) {
       setError("Please select a broker connection");
       return;
     }
     
-    // Validate inputs
     if (!instrument) {
       setError('Please select an instrument');
       return;
@@ -120,7 +112,6 @@ export const BrokerTradingInterface = ({
       return;
     }
     
-    // Create order parameters
     const orderParams: OrderParams = {
       instrument,
       type: orderType,
@@ -128,7 +119,6 @@ export const BrokerTradingInterface = ({
       comment: `Order placed via StrategySeer`,
     };
     
-    // Add optional parameters if provided
     if (!isMarketOrder && price) {
       orderParams.price = parseFloat(price);
     }
@@ -141,7 +131,6 @@ export const BrokerTradingInterface = ({
       orderParams.takeProfit = parseFloat(takeProfit);
     }
     
-    // Place the order
     setIsPlacingOrder(true);
     
     try {
@@ -152,7 +141,6 @@ export const BrokerTradingInterface = ({
         description: `Successfully placed ${orderType} order for ${instrument}`,
       });
       
-      // Reset form if successful
       if (!isMarketOrder) {
         setPrice('');
       }
@@ -215,7 +203,6 @@ export const BrokerTradingInterface = ({
           </div>
         )}
         
-        {/* Account Info */}
         {accountInfo && (
           <div className="grid grid-cols-2 gap-2 p-3 bg-muted rounded-lg mb-4">
             <div>
@@ -229,7 +216,6 @@ export const BrokerTradingInterface = ({
           </div>
         )}
         
-        {/* Instrument Selection */}
         <div className="space-y-2">
           <Label htmlFor="instrument">Instrument</Label>
           <Select value={instrument} onValueChange={setInstrument}>
@@ -251,7 +237,6 @@ export const BrokerTradingInterface = ({
           </Select>
         </div>
         
-        {/* Current Price Display */}
         <div className="p-3 bg-muted rounded-lg flex items-center justify-between">
           <div>
             <span className="text-sm text-muted-foreground">Current Price</span>
@@ -267,7 +252,6 @@ export const BrokerTradingInterface = ({
           </div>
         </div>
         
-        {/* Buy/Sell Tabs */}
         <Tabs defaultValue="buy" onValueChange={(value) => setOrderType(value as 'buy' | 'sell')}>
           <TabsList className="grid grid-cols-2">
             <TabsTrigger value="buy" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">Buy</TabsTrigger>
@@ -275,7 +259,6 @@ export const BrokerTradingInterface = ({
           </TabsList>
           
           <div className="mt-4 space-y-4">
-            {/* Volume */}
             <div className="space-y-2">
               <Label htmlFor="volume">Volume</Label>
               <Input
@@ -286,7 +269,6 @@ export const BrokerTradingInterface = ({
               />
             </div>
             
-            {/* Market/Limit Switch */}
             <div className="flex items-center justify-between">
               <Label htmlFor="market-order">Market Order</Label>
               <Switch
@@ -296,7 +278,6 @@ export const BrokerTradingInterface = ({
               />
             </div>
             
-            {/* Price (for limit orders) */}
             {!isMarketOrder && (
               <div className="space-y-2">
                 <Label htmlFor="price">Price</Label>
@@ -309,7 +290,6 @@ export const BrokerTradingInterface = ({
               </div>
             )}
             
-            {/* Stop Loss */}
             <div className="space-y-2">
               <Label htmlFor="stop-loss">Stop Loss (optional)</Label>
               <Input
@@ -322,7 +302,6 @@ export const BrokerTradingInterface = ({
               />
             </div>
             
-            {/* Take Profit */}
             <div className="space-y-2">
               <Label htmlFor="take-profit">Take Profit (optional)</Label>
               <Input
@@ -337,7 +316,6 @@ export const BrokerTradingInterface = ({
           </div>
         </Tabs>
         
-        {/* Error display */}
         {error && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />

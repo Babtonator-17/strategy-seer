@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Loader2, Bot, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { AssistantConversation } from '@/types/supabase';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -73,11 +73,12 @@ export const AITradingAssistant = () => {
         }
         
         if (data) {
-          setConversationId(data.id);
+          const conversation = data as AssistantConversation;
+          setConversationId(conversation.id);
           
           // Only set messages if we have some in the DB
-          if (data.messages && data.messages.length > 0) {
-            setMessages(data.messages);
+          if (conversation.messages && conversation.messages.length > 0) {
+            setMessages(conversation.messages as Message[]);
           }
         }
       } catch (error) {

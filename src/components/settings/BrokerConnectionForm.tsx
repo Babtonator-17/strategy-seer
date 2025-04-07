@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +15,7 @@ import { BrokerType, connectToBroker } from '@/services/brokerService';
 import { AlertCircle, Check, Loader2, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from "@/integrations/supabase/client";
+import { BrokerConnection } from '@/types/supabase';
 
 export const BrokerConnectionForm = () => {
   const { toast } = useToast();
@@ -23,7 +23,7 @@ export const BrokerConnectionForm = () => {
   const [connecting, setConnecting] = useState(false);
   const [connected, setConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [savedConnections, setSavedConnections] = useState<any[]>([]);
+  const [savedConnections, setSavedConnections] = useState<BrokerConnection[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
   const [formData, setFormData] = useState({
     server: '',
@@ -35,7 +35,6 @@ export const BrokerConnectionForm = () => {
     name: '',
   });
 
-  // Fetch saved connections on component mount
   useEffect(() => {
     fetchSavedConnections();
   }, []);
@@ -68,7 +67,6 @@ export const BrokerConnectionForm = () => {
     setConnectionError(null);
     setConnected(false);
     
-    // Reset form data when broker changes
     setFormData({
       server: '',
       apiKey: '',
@@ -95,7 +93,6 @@ export const BrokerConnectionForm = () => {
     setConnectionError(null);
 
     try {
-      // First, try to connect using the broker service
       const localResult = await connectToBroker({
         type: selectedBroker as BrokerType,
         ...formData,
@@ -106,7 +103,6 @@ export const BrokerConnectionForm = () => {
         return;
       }
 
-      // If local connection is successful, store in Supabase via the edge function
       const { data: response, error } = await supabase.functions.invoke('connect-broker', {
         body: { 
           brokerType: selectedBroker,
@@ -141,7 +137,6 @@ export const BrokerConnectionForm = () => {
         description: `Successfully connected to ${selectedBroker} broker.`,
       });
       
-      // Refresh saved connections
       fetchSavedConnections();
       
     } catch (error) {
