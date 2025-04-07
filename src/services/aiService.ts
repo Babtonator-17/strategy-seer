@@ -1,5 +1,6 @@
+// AI service for generating trading recommendations and analysis
 
-// Mock AI service for generating trading recommendations
+import { getOpenPositions } from './brokerService';
 
 /**
  * AI recommendation interface
@@ -27,6 +28,142 @@ export interface MarketCondition {
   riskLevel: 'low' | 'medium' | 'high';
   timestamp: string;
 }
+
+/**
+ * Options for account types
+ */
+export enum AccountType {
+  DEMO = 'demo',
+  PAPER = 'paper',
+  LIVE = 'live'
+}
+
+/**
+ * OpenAI configuration
+ */
+export interface OpenAIConfig {
+  apiKey: string;
+  model: string;
+  enabled: boolean;
+}
+
+let openAIConfig: OpenAIConfig = {
+  apiKey: '',
+  model: 'gpt-4o',
+  enabled: false
+};
+
+/**
+ * Set OpenAI configuration for enhanced analysis
+ */
+export const configureOpenAI = (config: OpenAIConfig): void => {
+  openAIConfig = {
+    ...config,
+    enabled: Boolean(config.apiKey)
+  };
+};
+
+/**
+ * Get OpenAI configuration
+ */
+export const getOpenAIConfig = (): OpenAIConfig => {
+  return { ...openAIConfig };
+};
+
+/**
+ * Generate AI response to user query using positions data and market context
+ */
+export const generateAIResponse = async (query: string): Promise<string> => {
+  console.log(`Processing user query: ${query}`);
+  
+  // Get current positions for context
+  let positionsData = [];
+  try {
+    positionsData = await getOpenPositions();
+  } catch (error) {
+    console.error('Failed to fetch positions for AI context:', error);
+  }
+  
+  // If OpenAI is enabled, use it for more sophisticated responses
+  if (openAIConfig.enabled && openAIConfig.apiKey) {
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openAIConfig.apiKey}`
+        },
+        body: JSON.stringify({
+          model: openAIConfig.model,
+          messages: [
+            {
+              role: 'system',
+              content: `You are an AI trading assistant that provides analysis and recommendations. 
+                        Current positions: ${JSON.stringify(positionsData)}. 
+                        Answer concisely but thoroughly, focusing on trading insights and analysis.`
+            },
+            {
+              role: 'user',
+              content: query
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 1000
+        })
+      });
+      
+      const data = await response.json();
+      if (data.choices && data.choices.length > 0) {
+        return data.choices[0].message.content;
+      }
+    } catch (error) {
+      console.error('OpenAI API error:', error);
+      // Fall back to mock responses if OpenAI fails
+    }
+  }
+  
+  // Generate a context-aware response based on query content and positions
+  // This is a fallback when OpenAI is not enabled or if the API call fails
+  if (query.toLowerCase().includes('bitcoin') || query.toLowerCase().includes('btc')) {
+    if (positionsData.some(pos => pos.instrument === 'BTCUSD')) {
+      return 'Based on your current BTC/USD position and recent market data, Bitcoin is showing signs of bullish momentum with key resistance at $38,200. Your current position is up $172.50 (+0.47%). Consider setting a trailing stop at $36,300 to secure profits while allowing for continued upside.';
+    } else {
+      return 'Based on recent market data, Bitcoin is showing signs of bullish momentum with key resistance at $37,500. Consider entering on pullbacks to the 20-day EMA around $36,200. Set stop losses at $35,400 and consider taking profits at $38,900 and $40,500.';
+    }
+  } else if (query.toLowerCase().includes('risk')) {
+    const totalRisk = positionsData.reduce((sum, pos) => {
+      const riskAmount = pos.type === 'buy' 
+        ? (pos.openPrice - (pos.stopLoss || pos.openPrice * 0.95)) * pos.volume
+        : ((pos.stopLoss || pos.openPrice * 1.05) - pos.openPrice) * pos.volume;
+      return sum + Math.abs(riskAmount);
+    }, 0);
+    
+    return `Your current portfolio has ${positionsData.length} open positions with approximately $${totalRisk.toFixed(2)} at risk (assuming default stop losses where not set). I recommend limiting each position to 2-5% of your capital. Your most volatile positions in crypto should have tighter stops. Consider hedging your crypto exposure with options or futures if available through your broker.`;
+  } else if (query.toLowerCase().includes('analyze') || query.toLowerCase().includes('analysis')) {
+    const profitPositions = positionsData.filter(pos => pos.profit > 0);
+    const lossPositions = positionsData.filter(pos => pos.profit <= 0);
+    const avgProfit = profitPositions.length ? profitPositions.reduce((sum, pos) => sum + pos.profit, 0) / profitPositions.length : 0;
+    const avgLoss = lossPositions.length ? lossPositions.reduce((sum, pos) => sum + pos.profit, 0) / lossPositions.length : 0;
+    
+    return `I've analyzed your ${positionsData.length} open positions. Your average winning position is +$${avgProfit.toFixed(2)} while your average losing position is -$${Math.abs(avgLoss).toFixed(2)}. This gives you a profit-to-loss ratio of ${avgLoss !== 0 ? (avgProfit / Math.abs(avgLoss)).toFixed(2) : 'N/A'}. ${
+      positionsData.length > 0 ? `Your largest position is in ${positionsData.sort((a, b) => b.volume - a.volume)[0].instrument}. Consider reducing this position size to better manage risk.` : 'Consider adding positions to diversify your portfolio.'
+    }`;
+  } else if (query.toLowerCase().includes('recommend') || query.toLowerCase().includes('suggestion')) {
+    return `Based on current market conditions and your portfolio composition, I'd recommend:
+    
+    1. Consider adding EUR/USD long positions as the pair is showing signs of a trend reversal
+    2. Your BTC exposure is high relative to your account size, consider taking partial profits
+    3. The volatility in ETH/USD suggests increasing your position size gradually rather than all at once
+    4. Set a trailing stop on your current profitable positions to lock in gains while letting them run`;
+  } else {
+    // Generic response for other types of questions
+    return `I've analyzed the current market conditions and your portfolio of ${positionsData.length} positions. ${
+      positionsData.length > 0 
+        ? `Your largest exposure is to ${positionsData.sort((a, b) => b.volume - a.volume)[0].instrument} which represents about ${Math.round(positionsData.sort((a, b) => b.volume - a.volume)[0].volume / positionsData.reduce((sum, pos) => sum + pos.volume, 0) * 100)}% of your portfolio.`
+        : 'You currently have no open positions. Consider starting with small positions in major pairs or cryptocurrencies.'
+    } For more specific analysis, please ask about a particular instrument, strategy, or risk management technique.`;
+  }
+};
 
 /**
  * Get AI trading recommendations

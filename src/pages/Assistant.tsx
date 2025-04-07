@@ -1,12 +1,17 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send, MessageSquare, Bot, ArrowRight } from 'lucide-react';
+import { Send, MessageSquare, Bot, ArrowRight, Settings, Loader2 } from 'lucide-react';
 import { getOpenPositions, BrokerType } from '@/services/brokerService';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { generateAIResponse, configureOpenAI, getOpenAIConfig, AccountType } from '@/services/aiService';
 
 // Enhanced trading assistant types
 type MessageRole = 'user' | 'assistant' | 'system';
@@ -14,6 +19,7 @@ type MessageRole = 'user' | 'assistant' | 'system';
 interface Message {
   role: MessageRole;
   content: string;
+  timestamp: Date;
 }
 
 interface QuickPrompt {
@@ -27,13 +33,22 @@ const Assistant = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Hello! I\'m your AI trading assistant. How can I help you with your trading strategy today?'
+      content: 'Hello! I\'m your AI trading assistant. How can I help you with your trading strategy today?',
+      timestamp: new Date(),
     }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [positions, setPositions] = useState<any[]>([]);
   const [brokerConnected, setBrokerConnected] = useState(false);
+  const [openAISettings, setOpenAISettings] = useState({
+    apiKey: '',
+    model: 'gpt-4o',
+    enabled: false
+  });
+  const [accountType, setAccountType] = useState<AccountType>(AccountType.DEMO);
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Quick prompt suggestions
   const quickPrompts: QuickPrompt[] = [
@@ -73,131 +88,298 @@ const Assistant = () => {
 
     fetchPositions();
   }, []);
+  
+  // Scroll to bottom of messages
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+  
+  // Save OpenAI settings
+  const handleSaveOpenAISettings = () => {
+    configureOpenAI({
+      apiKey: openAISettings.apiKey,
+      model: openAISettings.model,
+      enabled: Boolean(openAISettings.apiKey)
+    });
+    
+    toast({
+      title: openAISettings.apiKey ? "OpenAI Integration Enabled" : "OpenAI Integration Disabled",
+      description: openAISettings.apiKey 
+        ? `Using ${openAISettings.model} for enhanced analysis` 
+        : "Using built-in analysis capabilities",
+    });
+  };
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
     
     // Add user message
-    setMessages(prev => [...prev, { role: 'user', content: input }]);
+    const userMessage: Message = { 
+      role: 'user', 
+      content: input,
+      timestamp: new Date() 
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
     
     // Clear input and show loading state
     setInput('');
     setIsLoading(true);
     
-    // Simulate AI response with different responses based on broker connection
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Generate typing indicator effect
+      const typingIndicator = setTimeout(() => {
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: '...',
+          timestamp: new Date()
+        }]);
+      }, 1000);
       
-      let responseContent = '';
+      // Get AI response with context awareness
+      const response = await generateAIResponse(userMessage.content);
       
-      // Generate contextual response
-      if (input.toLowerCase().includes('bitcoin') || input.toLowerCase().includes('btc')) {
-        responseContent = 'Based on recent market data, Bitcoin is showing signs of bullish momentum with key resistance at $37,500. Consider entering on pullbacks to the 20-day EMA around $36,200. Set stop losses at $35,400 and consider taking profits at $38,900 and $40,500.';
-      } else if (input.toLowerCase().includes('risk')) {
-        responseContent = 'For your current portfolio, I recommend limiting each position to 2-5% of your capital. Your most volatile positions in crypto should have tighter stops. Consider hedging your BTC exposure with options if available through your broker.';
-      } else if (input.toLowerCase().includes('analyze') || input.toLowerCase().includes('analysis')) {
-        responseContent = 'I\'ve analyzed your recent trades and noticed you tend to exit profitable trades too early. Your average win is 1.2% while your average loss is 1.8%. Try letting your winners run longer by using trailing stops instead of fixed take-profit levels.';
-      } else if (brokerConnected) {
-        responseContent = 'I\'ve analyzed your current portfolio of ' + positions.length + ' positions. Your largest exposure is to BTC/USD which represents 45% of your portfolio risk. Consider diversifying into traditional forex pairs like EUR/USD to reduce overall volatility.';
-      } else {
-        responseContent = 'To provide more personalized analysis, consider connecting your broker in the Settings page. I can then analyze your actual trades and positions to give you customized recommendations based on your trading style and risk profile.';
-      }
+      // Clear typing indicator
+      clearTimeout(typingIndicator);
       
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: responseContent
-      }]);
+      // Update the "..." message with actual response if it exists, otherwise add new message
+      setMessages(prev => {
+        const lastMessage = prev[prev.length - 1];
+        if (lastMessage.role === 'assistant' && lastMessage.content === '...') {
+          return prev.slice(0, -1).concat({ 
+            role: 'assistant', 
+            content: response,
+            timestamp: new Date()
+          });
+        } else {
+          return [...prev, { 
+            role: 'assistant', 
+            content: response,
+            timestamp: new Date()
+          }];
+        }
+      });
 
       // Show toast notification
       toast({
         title: "Analysis Complete",
         description: "AI assistant has analyzed your query",
       });
-    }, 1500);
+      
+    } catch (error) {
+      console.error('Error generating AI response:', error);
+      toast({
+        title: "Analysis Error",
+        description: "Failed to generate AI response",
+        variant: "destructive"
+      });
+      
+      // Remove typing indicator if it exists
+      setMessages(prev => {
+        const lastMessage = prev[prev.length - 1];
+        if (lastMessage.role === 'assistant' && lastMessage.content === '...') {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleQuickPrompt = (prompt: string) => {
     setInput(prompt);
   };
+  
+  // Format timestamp for messages
+  const formatTimestamp = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
     <DashboardLayout>
-      <Card className="h-[calc(100vh-8rem)]">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bot className="h-5 w-5" />
-            AI Trading Assistant
-          </CardTitle>
-          <CardDescription>
-            Get personalized insights, strategy suggestions, and market analysis from your AI assistant
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col h-[calc(100%-8rem)]">
-          {/* Messages container */}
-          <div className="flex-1 overflow-auto mb-4 space-y-4 pr-2">
-            {messages.map((message, index) => (
-              <div 
-                key={index} 
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div 
-                  className={`max-w-[80%] rounded-lg p-3 ${
-                    message.role === 'user' 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'bg-muted'
-                  }`}
-                >
-                  {message.content}
-                </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-muted rounded-lg p-3 max-w-[80%]">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse delay-150"></div>
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse delay-300"></div>
-                    <span className="text-sm text-muted-foreground">Analyzing market data...</span>
+      <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-8rem)]">
+        <Card className="flex-1 h-full">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Bot className="h-5 w-5" />
+                AI Trading Assistant
+              </CardTitle>
+              <CardDescription>
+                Get personalized insights, strategy suggestions, and market analysis
+              </CardDescription>
+            </div>
+            
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Assistant Settings</DialogTitle>
+                  <DialogDescription>
+                    Configure your AI trading assistant preferences
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Account Type</Label>
+                    <Select 
+                      value={accountType} 
+                      onValueChange={(value) => setAccountType(value as AccountType)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select account type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={AccountType.DEMO}>Demo Account</SelectItem>
+                        <SelectItem value={AccountType.PAPER}>Paper Trading</SelectItem>
+                        <SelectItem value={AccountType.LIVE}>Live Trading</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="openai-key">OpenAI API Key</Label>
+                    <Input
+                      id="openai-key"
+                      type="password"
+                      value={openAISettings.apiKey}
+                      onChange={(e) => setOpenAISettings(prev => ({ ...prev, apiKey: e.target.value }))}
+                      placeholder="Enter your OpenAI API key"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Enhance your assistant with OpenAI's advanced language model
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>OpenAI Model</Label>
+                    <Select 
+                      value={openAISettings.model} 
+                      onValueChange={(value) => setOpenAISettings(prev => ({ ...prev, model: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select OpenAI model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="gpt-4o">GPT-4o</SelectItem>
+                        <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+                        <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
+                
+                <DialogFooter>
+                  <Button onClick={handleSaveOpenAISettings}>Save Changes</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </CardHeader>
+          
+          <CardContent className="flex flex-col h-[calc(100%-12rem)]">
+            {/* Messages container */}
+            <div className="flex-1 overflow-auto mb-4 space-y-4 pr-2">
+              {messages.map((message, index) => (
+                <div 
+                  key={index} 
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div className="flex flex-col max-w-[80%]">
+                    <div 
+                      className={`rounded-lg p-3 ${
+                        message.role === 'user' 
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'bg-muted'
+                      } ${message.content === '...' ? 'animate-pulse' : ''}`}
+                    >
+                      {message.content === '...' ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 rounded-full bg-current animate-bounce"></div>
+                          <div className="w-2 h-2 rounded-full bg-current animate-bounce delay-150"></div>
+                          <div className="w-2 h-2 rounded-full bg-current animate-bounce delay-300"></div>
+                        </div>
+                      ) : (
+                        <div className="whitespace-pre-wrap">{message.content}</div>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1 ml-1">
+                      {message.content !== '...' && formatTimestamp(message.timestamp)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+              
+              {isLoading && !messages[messages.length - 1]?.content.includes('...') && (
+                <div className="flex justify-start">
+                  <div className="bg-muted rounded-lg p-3 max-w-[80%]">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                      <div className="w-2 h-2 rounded-full bg-primary animate-pulse delay-150"></div>
+                      <div className="w-2 h-2 rounded-full bg-primary animate-pulse delay-300"></div>
+                      <span className="text-sm text-muted-foreground">Analyzing market data...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Quick prompts */}
+            {messages.length < 4 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+                {quickPrompts.map((item, index) => (
+                  <Button 
+                    key={index} 
+                    variant="outline" 
+                    className="justify-between"
+                    onClick={() => handleQuickPrompt(item.prompt)}
+                    disabled={isLoading}
+                  >
+                    <span>{item.title}</span>
+                    {item.icon}
+                  </Button>
+                ))}
               </div>
             )}
-          </div>
-          
-          {/* Quick prompts */}
-          {messages.length < 3 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
-              {quickPrompts.map((item, index) => (
-                <Button 
-                  key={index} 
-                  variant="outline" 
-                  className="justify-between"
-                  onClick={() => handleQuickPrompt(item.prompt)}
-                >
-                  <span>{item.title}</span>
-                  {item.icon}
-                </Button>
-              ))}
+            
+            {/* Input area */}
+            <div className="flex gap-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask about trading strategies, market analysis, or risk management..."
+                onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
+                className="flex-1"
+                disabled={isLoading}
+              />
+              <Button onClick={handleSendMessage} disabled={isLoading}>
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
             </div>
-          )}
+          </CardContent>
           
-          {/* Input area */}
-          <div className="flex gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about trading strategies, market analysis, or risk management..."
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-              className="flex-1"
-              disabled={isLoading}
-            />
-            <Button onClick={handleSendMessage} disabled={isLoading}>
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          <CardFooter className="text-xs text-muted-foreground flex justify-between">
+            <div>
+              Account Type: {accountType}
+            </div>
+            <div>
+              {getOpenAIConfig().enabled ? 'Enhanced with OpenAI' : 'Using built-in analysis'}
+            </div>
+          </CardFooter>
+        </Card>
+      </div>
     </DashboardLayout>
   );
 };

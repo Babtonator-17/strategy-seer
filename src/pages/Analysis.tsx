@@ -3,254 +3,171 @@ import React, { useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts';
-import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
 
-// Mock data for strategy performance
-const strategyPerformanceData = [
-  { name: 'Jan', profit: 450, trades: 24 },
-  { name: 'Feb', profit: -280, trades: 18 },
-  { name: 'Mar', profit: 320, trades: 22 },
-  { name: 'Apr', profit: 580, trades: 27 },
-  { name: 'May', profit: -120, trades: 15 },
-  { name: 'Jun', profit: 740, trades: 30 },
+// Mock trade performance data
+const tradeData = [
+  { name: 'Mon', profit: 120, loss: -45 },
+  { name: 'Tue', profit: 85, loss: -20 },
+  { name: 'Wed', profit: 0, loss: -65 },
+  { name: 'Thu', profit: 145, loss: 0 },
+  { name: 'Fri', profit: 60, loss: -30 },
 ];
 
-// Mock data for win/loss ratio
-const winLossData = [
-  { name: 'Mon', wins: 12, losses: 5 },
-  { name: 'Tue', wins: 8, losses: 7 },
-  { name: 'Wed', wins: 15, losses: 3 },
-  { name: 'Thu', wins: 10, losses: 8 },
-  { name: 'Fri', wins: 14, losses: 4 },
+// Mock strategy performance data
+const strategyData = [
+  { name: 'Trend Following', winRate: 68, profitFactor: 1.8, trades: 45 },
+  { name: 'Breakout', winRate: 52, profitFactor: 1.4, trades: 32 },
+  { name: 'Mean Reversion', winRate: 74, profitFactor: 2.1, trades: 28 },
+  { name: 'Scalping', winRate: 65, profitFactor: 1.6, trades: 120 },
 ];
 
-// Mock data for trade analysis
-const tradeAnalysisData = [
-  {
-    strategy: "Moving Average Crossover",
-    winRate: 68,
-    avgProfit: 32.5,
-    avgLoss: -18.2,
-    totalTrades: 45,
-    profitFactor: 2.4,
-  },
-  {
-    strategy: "RSI Divergence",
-    winRate: 72,
-    avgProfit: 45.8,
-    avgLoss: -25.3,
-    totalTrades: 36,
-    profitFactor: 2.8,
-  },
-  {
-    strategy: "Breakout Strategy",
-    winRate: 58,
-    avgProfit: 58.2,
-    avgLoss: -28.7,
-    totalTrades: 52,
-    profitFactor: 1.9,
-  },
-  {
-    strategy: "Support/Resistance",
-    winRate: 65,
-    avgProfit: 37.9,
-    avgLoss: -22.1,
-    totalTrades: 48,
-    profitFactor: 2.1,
-  },
+// Mock market sentiment data
+const sentimentData = [
+  { market: 'Crypto', bullish: 65, bearish: 35 },
+  { market: 'Forex', bullish: 45, bearish: 55 },
+  { market: 'Stocks', bullish: 58, bearish: 42 },
+  { market: 'Commodities', bullish: 52, bearish: 48 },
 ];
+
+// Custom tooltip for the bar charts
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background border border-border p-3 rounded-md shadow-md">
+        <p className="font-medium">{`${label}`}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={`item-${index}`} style={{ color: entry.color }}>
+            {`${entry.name}: ${entry.value > 0 ? '+' : ''}${entry.value}`}
+          </p>
+        ))}
+      </div>
+    );
+  }
+
+  return null;
+};
 
 const Analysis = () => {
-  const [timeFrame, setTimeFrame] = useState('weekly');
-  
+  const [timeframe, setTimeframe] = useState('weekly');
+
   return (
     <DashboardLayout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Performance Analysis</h1>
-        <p className="text-muted-foreground">Analyze your trading performance and strategy effectiveness</p>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Strategy Performance Card */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle>Strategy Performance</CardTitle>
-              <Select defaultValue="1m" className="w-[80px]">
-                <SelectTrigger>
-                  <SelectValue placeholder="Period" />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="col-span-full md:col-span-2">
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <CardTitle>Trade Performance</CardTitle>
+                <CardDescription>Analysis of your trading performance over time</CardDescription>
+              </div>
+              <Select value={timeframe} onValueChange={setTimeframe}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Select timeframe" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1w">1W</SelectItem>
-                  <SelectItem value="1m">1M</SelectItem>
-                  <SelectItem value="3m">3M</SelectItem>
-                  <SelectItem value="1y">1Y</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={strategyPerformanceData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={tradeData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip />
-                <Legend />
+                <Tooltip content={<CustomTooltip />} />
                 <Bar 
                   dataKey="profit" 
-                  fill={(entry) => entry.profit >= 0 ? "hsl(var(--success))" : "hsl(var(--destructive))"}
-                  fillOpacity={0.8}
-                  strokeWidth={1}
-                  barSize={30}
+                  name="Profit" 
+                  fill="hsl(var(--success))" 
+                  radius={[4, 4, 0, 0]} 
+                />
+                <Bar 
+                  dataKey="loss" 
+                  name="Loss" 
+                  fill="hsl(var(--destructive))" 
+                  radius={[4, 4, 0, 0]} 
                 />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
-        
-        {/* Win/Loss Ratio Card */}
+
+        {/* Additional analysis cards */}
         <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle>Win/Loss Ratio</CardTitle>
-              <Tabs defaultValue={timeFrame} onValueChange={setTimeFrame}>
-                <TabsList>
-                  <TabsTrigger value="daily">D</TabsTrigger>
-                  <TabsTrigger value="weekly">W</TabsTrigger>
-                  <TabsTrigger value="monthly">M</TabsTrigger>
-                </TabsList>
-              </Tabs>
+          <CardHeader>
+            <CardTitle>Strategy Analysis</CardTitle>
+            <CardDescription>Performance metrics by strategy</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {strategyData.map((strategy, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="font-medium">{strategy.name}</span>
+                    <span className="text-muted-foreground">{strategy.trades} trades</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm w-20">Win Rate:</span>
+                    <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-green-500" 
+                        style={{ width: `${strategy.winRate}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium">{strategy.winRate}%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm w-20">Profit Factor:</span>
+                    <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-500" 
+                        style={{ width: `${(strategy.profitFactor/3) * 100}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium">{strategy.profitFactor}</span>
+                  </div>
+                </div>
+              ))}
             </div>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={winLossData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar 
-                  dataKey="wins" 
-                  name="Wins" 
-                  fill="hsl(var(--success))"
-                  barSize={20}
-                />
-                <Bar 
-                  dataKey="losses" 
-                  name="Losses" 
-                  fill="hsl(var(--destructive))"
-                  barSize={20}
-                />
-              </BarChart>
-            </ResponsiveContainer>
           </CardContent>
         </Card>
-      </div>
-      
-      {/* Trading Strategies Analysis */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Trading Strategies Analysis</CardTitle>
-          <CardDescription>Performance metrics for your active trading strategies</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="px-4 py-3 text-left font-medium">Strategy</th>
-                  <th className="px-4 py-3 text-right font-medium">Win Rate</th>
-                  <th className="px-4 py-3 text-right font-medium">Avg Profit</th>
-                  <th className="px-4 py-3 text-right font-medium">Avg Loss</th>
-                  <th className="px-4 py-3 text-right font-medium">Total Trades</th>
-                  <th className="px-4 py-3 text-right font-medium">Profit Factor</th>
-                  <th className="px-4 py-3 text-right font-medium"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {tradeAnalysisData.map((item, index) => (
-                  <tr key={index} className="border-b">
-                    <td className="px-4 py-3 font-medium">{item.strategy}</td>
-                    <td className="px-4 py-3 text-right">{item.winRate}%</td>
-                    <td className="px-4 py-3 text-right text-green-600">${item.avgProfit}</td>
-                    <td className="px-4 py-3 text-right text-red-600">${item.avgLoss}</td>
-                    <td className="px-4 py-3 text-right">{item.totalTrades}</td>
-                    <td className="px-4 py-3 text-right">{item.profitFactor}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Button variant="ghost" size="sm">
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Bottom charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
+
+        <Card className="md:col-span-2 lg:col-span-1">
           <CardHeader>
-            <CardTitle>Profit Distribution</CardTitle>
+            <CardTitle>Market Sentiment</CardTitle>
+            <CardDescription>Current market sentiment analysis</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={strategyPerformanceData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="profit" 
-                  stroke="hsl(var(--primary))" 
-                  activeDot={{ r: 8 }}
-                  strokeWidth={2}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Trading Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={strategyPerformanceData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar 
-                  dataKey="trades" 
-                  name="Number of Trades" 
-                  fill="hsl(var(--primary))"
-                  fillOpacity={0.7}
-                  barSize={30}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="space-y-4">
+              {sentimentData.map((item, i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex justify-between">
+                    <span className="font-medium">{item.market}</span>
+                  </div>
+                  <div className="flex h-3 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-green-500" 
+                      style={{ width: `${item.bullish}%` }}
+                    ></div>
+                    <div 
+                      className="bg-red-500" 
+                      style={{ width: `${item.bearish}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Bullish {item.bullish}%</span>
+                    <span>Bearish {item.bearish}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>

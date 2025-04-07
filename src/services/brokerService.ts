@@ -1,11 +1,11 @@
-
-// Mock broker service for the trading application
+// Broker service for the trading application
 
 /**
  * Different broker connection types
  */
 export enum BrokerType {
   DEMO = 'demo',
+  PAPER = 'paper',
   MT4 = 'mt4',
   MT5 = 'mt5',
   BINANCE = 'binance',
@@ -39,6 +39,16 @@ export interface OrderParams {
   comment?: string;
 }
 
+// Track current broker connection state
+let currentBrokerType: BrokerType = BrokerType.DEMO;
+
+/**
+ * Get current broker connection type
+ */
+export const getCurrentBroker = (): BrokerType => {
+  return currentBrokerType;
+};
+
 /**
  * Connect to a broker
  */
@@ -49,9 +59,10 @@ export const connectToBroker = async (params: BrokerConnectionParams): Promise<b
   // Simulate API connection delay
   await new Promise(resolve => setTimeout(resolve, 1500));
   
-  // For demo, always return success
-  if (params.type === BrokerType.DEMO) {
-    console.log('Connected to demo broker successfully');
+  // For demo or paper, always return success
+  if (params.type === BrokerType.DEMO || params.type === BrokerType.PAPER) {
+    console.log(`Connected to ${params.type} broker successfully`);
+    currentBrokerType = params.type;
     return true;
   }
   
@@ -62,6 +73,7 @@ export const connectToBroker = async (params: BrokerConnectionParams): Promise<b
   }
   
   console.log('Connected to broker successfully');
+  currentBrokerType = params.type;
   return true;
 };
 
@@ -104,16 +116,21 @@ export const placeOrder = async (order: OrderParams): Promise<any> => {
   // Generate a mock order ID and response
   const orderId = `ord_${Math.random().toString(36).substring(2, 10)}`;
   
+  const executionPrice = order.price || getMarketPrice(order.instrument, order.type);
+  
+  console.log(`[${currentBrokerType}] Order executed at price: ${executionPrice}`);
+  
   return {
     orderId,
     instrument: order.instrument,
     type: order.type,
     volume: order.volume,
-    price: order.price || getMarketPrice(order.instrument, order.type),
+    price: executionPrice,
     stopLoss: order.stopLoss,
     takeProfit: order.takeProfit,
     status: 'executed',
     openTime: new Date().toISOString(),
+    accountType: currentBrokerType,
   };
 };
 
@@ -148,8 +165,8 @@ export const modifyPosition = async (
  * Get open positions
  */
 export const getOpenPositions = async (): Promise<any[]> => {
-  // Return mock positions data
-  return [
+  // Return mock positions data - in real app would fetch from broker API
+  const basePositions = [
     {
       id: 'pos_1',
       instrument: 'BTCUSD',
@@ -190,6 +207,12 @@ export const getOpenPositions = async (): Promise<any[]> => {
       takeProfit: 2450,
     },
   ];
+  
+  // Add broker type to each position
+  return basePositions.map(pos => ({
+    ...pos,
+    accountType: currentBrokerType
+  }));
 };
 
 /**
