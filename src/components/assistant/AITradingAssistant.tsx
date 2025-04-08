@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -398,101 +399,103 @@ export const AITradingAssistant = () => {
       </CardHeader>
       
       <CardContent className="flex-grow overflow-hidden flex flex-col p-0">
-        <TabsContent value="chat" className="flex-grow overflow-hidden flex flex-col m-0 p-0">
-          <div className="px-6">
-            {controlMode && (
-              <div className="bg-amber-100 dark:bg-amber-900/20 flex items-center gap-2 px-3 py-1.5 rounded-md mb-3 text-amber-800 dark:text-amber-300 text-xs">
-                <ShieldCheck className="h-4 w-4" />
-                <span>Control Mode Enabled - Assistant can execute trading commands</span>
+        <Tabs value={activeTab} className="flex-grow flex flex-col">
+          <TabsContent value="chat" className="flex-grow overflow-hidden flex flex-col m-0 p-0">
+            <div className="px-6">
+              {controlMode && (
+                <div className="bg-amber-100 dark:bg-amber-900/20 flex items-center gap-2 px-3 py-1.5 rounded-md mb-3 text-amber-800 dark:text-amber-300 text-xs">
+                  <ShieldCheck className="h-4 w-4" />
+                  <span>Control Mode Enabled - Assistant can execute trading commands</span>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                {suggestedCommands.map((cmd, idx) => (
+                  <Button 
+                    key={idx} 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 text-xs truncate" 
+                    onClick={() => handleCommandClick(cmd.command)}
+                  >
+                    {cmd.text}
+                  </Button>
+                ))}
               </div>
-            )}
-            
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-              {suggestedCommands.map((cmd, idx) => (
-                <Button 
-                  key={idx} 
-                  variant="outline" 
-                  size="sm" 
-                  className="h-7 text-xs truncate" 
-                  onClick={() => handleCommandClick(cmd.command)}
-                >
-                  {cmd.text}
-                </Button>
-              ))}
             </div>
-          </div>
+            
+            <Separator className="mb-2" />
+            
+            <ScrollArea className="flex-grow px-6 pr-2">
+              <div className="space-y-4 pt-2">
+                {messages.map((msg, index) => renderMessage(msg, index))}
+                <div ref={bottomRef} />
+              </div>
+            </ScrollArea>
+          </TabsContent>
           
-          <Separator className="mb-2" />
-          
-          <ScrollArea className="flex-grow px-6 pr-2">
-            <div className="space-y-4 pt-2">
-              {messages.map((msg, index) => renderMessage(msg, index))}
-              <div ref={bottomRef} />
-            </div>
-          </ScrollArea>
-        </TabsContent>
-        
-        <TabsContent value="settings" className="flex-grow overflow-auto m-0 p-6">
-          <div className="space-y-6">
-            <div className="space-y-3">
-              <h3 className="font-medium">Assistant Settings</h3>
-              
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="control-mode">Control Mode</Label>
-                  <p className="text-xs text-muted-foreground">Allow the assistant to execute trading commands</p>
+          <TabsContent value="settings" className="flex-grow overflow-auto m-0 p-6">
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <h3 className="font-medium">Assistant Settings</h3>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="control-mode">Control Mode</Label>
+                    <p className="text-xs text-muted-foreground">Allow the assistant to execute trading commands</p>
+                  </div>
+                  <Switch 
+                    id="control-mode" 
+                    checked={controlMode} 
+                    onCheckedChange={setControlMode}
+                  />
                 </div>
-                <Switch 
-                  id="control-mode" 
-                  checked={controlMode} 
-                  onCheckedChange={setControlMode}
-                />
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="voice-commands">Voice Commands</Label>
+                    <p className="text-xs text-muted-foreground">Enable speech-to-text input</p>
+                  </div>
+                  <Switch id="voice-commands" defaultChecked />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="expert-mode">Expert Mode</Label>
+                    <p className="text-xs text-muted-foreground">Get more technical and detailed responses</p>
+                  </div>
+                  <Switch id="expert-mode" />
+                </div>
               </div>
               
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="voice-commands">Voice Commands</Label>
-                  <p className="text-xs text-muted-foreground">Enable speech-to-text input</p>
-                </div>
-                <Switch id="voice-commands" defaultChecked />
-              </div>
+              <Separator />
               
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="expert-mode">Expert Mode</Label>
-                  <p className="text-xs text-muted-foreground">Get more technical and detailed responses</p>
-                </div>
-                <Switch id="expert-mode" />
-              </div>
-            </div>
-            
-            <Separator />
-            
-            <div className="space-y-3">
-              <h3 className="font-medium">Connected Broker <Badge variant="outline">Demo</Badge></h3>
-              <p className="text-sm text-muted-foreground">
-                You're currently using a demo broker connection. All trades are simulated with virtual funds.
-              </p>
-              <Button variant="outline" className="w-full">
-                Connect Real Broker
-              </Button>
-            </div>
-            
-            <Separator />
-            
-            <div className="space-y-3">
-              <h3 className="font-medium">Conversation Management</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" size="sm">
-                  New Conversation
-                </Button>
-                <Button variant="outline" size="sm">
-                  Clear History
+              <div className="space-y-3">
+                <h3 className="font-medium">Connected Broker <Badge variant="outline">Demo</Badge></h3>
+                <p className="text-sm text-muted-foreground">
+                  You're currently using a demo broker connection. All trades are simulated with virtual funds.
+                </p>
+                <Button variant="outline" className="w-full">
+                  Connect Real Broker
                 </Button>
               </div>
+              
+              <Separator />
+              
+              <div className="space-y-3">
+                <h3 className="font-medium">Conversation Management</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm">
+                    New Conversation
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    Clear History
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
-        </TabsContent>
+          </TabsContent>
+        </Tabs>
       </CardContent>
       
       <CardFooter>
@@ -599,3 +602,4 @@ export const AITradingAssistant = () => {
 };
 
 export default AITradingAssistant;
+
