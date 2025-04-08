@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -66,31 +65,36 @@ export const AITradingAssistant = () => {
   // Initialize speech recognition
   const setupSpeechRecognition = () => {
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      speechRecognition.current = new SpeechRecognition();
-      speechRecognition.current.continuous = false;
-      speechRecognition.current.interimResults = false;
+      const SpeechRecognitionAPI = (window.SpeechRecognition || 
+        window.webkitSpeechRecognition) as unknown as SpeechRecognitionStatic;
       
-      if (speechRecognition.current) {
-        speechRecognition.current.onresult = (event) => {
-          const transcript = event.results[0][0].transcript;
-          setQuery(transcript);
-          setIsListening(false);
-        };
+      if (SpeechRecognitionAPI) {
+        speechRecognition.current = new SpeechRecognitionAPI();
         
-        speechRecognition.current.onerror = (event) => {
-          console.error('Speech recognition error', event.error);
-          setIsListening(false);
-          toast({
-            title: "Voice Input Error",
-            description: "Could not recognize speech. Please try again or type your query.",
-            variant: "destructive"
-          });
-        };
-        
-        speechRecognition.current.onend = () => {
-          setIsListening(false);
-        };
+        if (speechRecognition.current) {
+          speechRecognition.current.continuous = false;
+          speechRecognition.current.interimResults = false;
+          
+          speechRecognition.current.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            setQuery(transcript);
+            setIsListening(false);
+          };
+          
+          speechRecognition.current.onerror = (event) => {
+            console.error('Speech recognition error', event.error);
+            setIsListening(false);
+            toast({
+              title: "Voice Input Error",
+              description: "Could not recognize speech. Please try again or type your query.",
+              variant: "destructive"
+            });
+          };
+          
+          speechRecognition.current.onend = () => {
+            setIsListening(false);
+          };
+        }
       }
     }
   };
@@ -122,25 +126,20 @@ export const AITradingAssistant = () => {
   };
   
   useEffect(() => {
-    // Initialize with welcome message if no messages
     if (messages.length === 0) {
       setMessages([welcomeMessage]);
     }
     
-    // Scroll to bottom whenever messages update
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
   
   useEffect(() => {
-    // Reset error when user logs in/out
     setError(null);
     
-    // Fetch conversation history if authenticated
     const fetchConversation = async () => {
       if (!user) return;
       
       try {
-        // Get the most recent conversation
         const { data, error } = await supabase
           .from('assistant_conversations')
           .select('*')
@@ -156,7 +155,6 @@ export const AITradingAssistant = () => {
           const conversation = data[0] as AssistantConversation;
           setConversationId(conversation.id);
           
-          // Only set messages if we have some in the DB
           if (conversation.messages && conversation.messages.length > 0) {
             setMessages(conversation.messages as Message[]);
           }
@@ -168,10 +166,8 @@ export const AITradingAssistant = () => {
     
     fetchConversation();
     
-    // Setup speech recognition
     setupSpeechRecognition();
     
-    // Clean up speech recognition on unmount
     return () => {
       if (speechRecognition.current && isListening) {
         speechRecognition.current.stop();
@@ -190,16 +186,12 @@ export const AITradingAssistant = () => {
       timestamp: new Date().toISOString()
     };
     
-    // Add user message immediately for better UX
     setMessages(prev => [...prev, userMessage]);
-    
-    // Clear input
     setQuery('');
     setLoading(true);
     setError(null);
     
     try {
-      // Call the edge function to get AI response
       const { data, error } = await supabase.functions.invoke('ai-assistant', {
         body: { 
           query: userMessage.content,
@@ -212,12 +204,10 @@ export const AITradingAssistant = () => {
       
       if (data.error) throw new Error(data.error);
       
-      // Update conversation ID if it's a new conversation
       if (data.conversationId && !conversationId) {
         setConversationId(data.conversationId);
       }
       
-      // Add AI response
       const assistantMessage: Message = {
         role: 'assistant',
         content: data.response,
@@ -227,7 +217,6 @@ export const AITradingAssistant = () => {
       
       setMessages(prev => [...prev, assistantMessage]);
       
-      // Check if there are any suggested commands to update based on context
       updateSuggestedCommands(data.response);
       
     } catch (error: any) {
@@ -240,7 +229,6 @@ export const AITradingAssistant = () => {
         variant: "destructive"
       });
       
-      // Add error message
       setMessages(prev => [
         ...prev,
         {
@@ -255,7 +243,6 @@ export const AITradingAssistant = () => {
   };
   
   const updateSuggestedCommands = (response: string) => {
-    // Analyze response to provide contextually relevant command suggestions
     const lowerResponse = response.toLowerCase();
     
     if (lowerResponse.includes('position') || lowerResponse.includes('trade')) {
@@ -285,15 +272,12 @@ export const AITradingAssistant = () => {
   const retryLastMessage = () => {
     if (messages.length < 2) return;
     
-    // Find the last user message
     const lastUserMessageIndex = [...messages].reverse().findIndex(m => m.role === 'user');
     if (lastUserMessageIndex === -1) return;
     
-    // Get the actual index in the original array
     const actualIndex = messages.length - 1 - lastUserMessageIndex;
     const lastUserMessage = messages[actualIndex];
     
-    // Set the query and remove the last assistant message (if it exists)
     setQuery(lastUserMessage.content);
     setMessages(messages.slice(0, actualIndex + 1));
   };
