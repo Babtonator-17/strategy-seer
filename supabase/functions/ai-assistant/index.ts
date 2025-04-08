@@ -35,7 +35,7 @@ serve(async (req) => {
       }
     );
 
-    // Get the session
+    // Get user session
     const {
       data: { session },
     } = await supabaseClient.auth.getSession();
@@ -56,7 +56,7 @@ serve(async (req) => {
       );
     }
 
-    // For now, return a simple mock response
+    // Generate response
     const mockResponse = generateMockResponse(query);
     
     // Store the conversation in the database
@@ -83,8 +83,9 @@ serve(async (req) => {
       
       if (fetchError) {
         console.error('Error fetching conversation:', fetchError);
+        // Continue with the response even if there's a fetch error
       } else {
-        const updatedMessages = [...(existingConversation.messages || []), userMessage, assistantMessage];
+        const updatedMessages = [...(existingConversation?.messages || []), userMessage, assistantMessage];
         
         const { error: updateError } = await supabaseClient
           .from('assistant_conversations')
@@ -129,7 +130,7 @@ serve(async (req) => {
     console.error('Error in AI assistant function:', error);
     
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || 'An unexpected error occurred' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

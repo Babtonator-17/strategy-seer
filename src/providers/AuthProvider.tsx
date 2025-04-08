@@ -2,6 +2,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   session: Session | null;
@@ -16,10 +17,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && !user) {
+        toast({
+          title: "Logged in successfully",
+          description: `Welcome${session?.user?.email ? ' ' + session.user.email : ''}!`,
+        });
+      }
+      
+      if (event === 'SIGNED_OUT') {
+        toast({
+          title: "Logged out",
+          description: "You have been logged out successfully",
+        });
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);

@@ -1,14 +1,15 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowRight } from 'lucide-react';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -17,9 +18,10 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   // Check if user is already logged in
-  React.useEffect(() => {
+  useEffect(() => {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
@@ -93,6 +95,31 @@ const Auth = () => {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+    } catch (error: any) {
+      toast({
+        title: "Google login failed",
+        description: error.message || "Unable to login with Google",
+        variant: "destructive",
+      });
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
@@ -108,8 +135,34 @@ const Auth = () => {
           </TabsList>
           
           <TabsContent value="login">
-            <form onSubmit={handleLogin}>
-              <CardContent className="space-y-4 pt-4">
+            <CardContent className="space-y-6 pt-4">
+              <Button 
+                variant="outline" 
+                className="w-full flex justify-center items-center gap-2" 
+                onClick={handleGoogleLogin}
+                disabled={googleLoading}
+              >
+                {googleLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <svg viewBox="0 0 24 24" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
+                      <g transform="matrix(1, 0, 0, 1, 0, 0)">
+                        <path d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.2,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.1,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.25,22C17.6,22 21.5,18.33 21.5,12.91C21.5,11.76 21.35,11.1 21.35,11.1V11.1Z" fill="currentColor"></path>
+                      </g>
+                    </svg>
+                    Continue with Google
+                  </>
+                )}
+              </Button>
+              
+              <div className="flex items-center gap-2">
+                <Separator className="flex-grow" />
+                <span className="text-xs text-muted-foreground">OR</span>
+                <Separator className="flex-grow" />
+              </div>
+              
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input 
@@ -137,22 +190,46 @@ const Auth = () => {
                     required
                   />
                 </div>
-              </CardContent>
               
-              <CardFooter>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Logging in...</> : 
-                    'Login'
+                    'Login with Email'
                   }
                 </Button>
-              </CardFooter>
-            </form>
+              </form>
+            </CardContent>
           </TabsContent>
           
           <TabsContent value="signup">
-            <form onSubmit={handleSignup}>
-              <CardContent className="space-y-4 pt-4">
+            <CardContent className="space-y-6 pt-4">
+              <Button 
+                variant="outline" 
+                className="w-full flex justify-center items-center gap-2" 
+                onClick={handleGoogleLogin}
+                disabled={googleLoading}
+              >
+                {googleLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <svg viewBox="0 0 24 24" width="16" height="16" xmlns="http://www.w3.org/2000/svg">
+                      <g transform="matrix(1, 0, 0, 1, 0, 0)">
+                        <path d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.2,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.1,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.25,22C17.6,22 21.5,18.33 21.5,12.91C21.5,11.76 21.35,11.1 21.35,11.1V11.1Z" fill="currentColor"></path>
+                      </g>
+                    </svg>
+                    Sign up with Google
+                  </>
+                )}
+              </Button>
+              
+              <div className="flex items-center gap-2">
+                <Separator className="flex-grow" />
+                <span className="text-xs text-muted-foreground">OR</span>
+                <Separator className="flex-grow" />
+              </div>
+              
+              <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
                   <Input 
@@ -178,17 +255,15 @@ const Auth = () => {
                     Password must be at least 6 characters long
                   </p>
                 </div>
-              </CardContent>
-              
-              <CardFooter>
+                
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing up...</> : 
                     'Create Account'
                   }
                 </Button>
-              </CardFooter>
-            </form>
+              </form>
+            </CardContent>
           </TabsContent>
         </Tabs>
         

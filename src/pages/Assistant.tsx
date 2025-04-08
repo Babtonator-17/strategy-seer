@@ -6,6 +6,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/providers/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
 
 const Assistant = () => {
   const isMobile = useIsMobile();
@@ -23,8 +24,11 @@ const Assistant = () => {
           </div>
           
           {!user && (
-            <Button asChild>
-              <Link to="/auth">Login to Save Conversations</Link>
+            <Button asChild size={isMobile ? "sm" : "default"} className="flex gap-1">
+              <Link to="/auth">
+                Login to Save Conversations
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </Button>
           )}
         </div>
