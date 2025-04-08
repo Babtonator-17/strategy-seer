@@ -35,17 +35,10 @@ serve(async (req) => {
       }
     );
 
-    // Get user session
+    // For demo purposes, we'll accept unauthorized requests but won't save them
     const {
       data: { session },
     } = await supabaseClient.auth.getSession();
-
-    if (!session) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     const { query, conversationId } = await req.json();
     
@@ -59,7 +52,7 @@ serve(async (req) => {
     // Generate response
     const mockResponse = generateMockResponse(query);
     
-    // Store the conversation in the database
+    // Store the conversation in the database if user is authenticated
     let updatedConversationId = conversationId;
     const userMessage = {
       role: 'user',
@@ -73,7 +66,7 @@ serve(async (req) => {
       timestamp: new Date().toISOString()
     };
     
-    if (conversationId) {
+    if (session && conversationId) {
       // Update existing conversation
       const { data: existingConversation, error: fetchError } = await supabaseClient
         .from('assistant_conversations')
@@ -99,7 +92,7 @@ serve(async (req) => {
           console.error('Error updating conversation:', updateError);
         }
       }
-    } else {
+    } else if (session) {
       // Create a new conversation
       const { data: newConversation, error: insertError } = await supabaseClient
         .from('assistant_conversations')
@@ -154,6 +147,10 @@ function generateMockResponse(query: string): string {
   
   if (lowerQuery.includes('chart') || lowerQuery.includes('analysis') || lowerQuery.includes('technical')) {
     return "Our platform provides advanced charting tools with various indicators like RSI, MACD, and Bollinger Bands. To add these to your chart, visit the Analysis tab and select your preferred indicators from the toolbox on the right side of the screen.";
+  }
+  
+  if (lowerQuery.includes('hello') || lowerQuery.includes('hi') || lowerQuery.includes('hey')) {
+    return "Hello! I'm your AI trading assistant. How can I help you today with trading strategies, market analysis, or platform navigation?";
   }
   
   return "I'm your AI trading assistant. I can help you with trading strategies, broker connections, market analysis, and platform navigation. Feel free to ask me specific questions about any of these topics.";

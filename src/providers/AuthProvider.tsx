@@ -22,10 +22,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && !user) {
+      if (event === 'SIGNED_IN' && session?.user) {
         toast({
           title: "Logged in successfully",
-          description: `Welcome${session?.user?.email ? ' ' + session.user.email : ''}!`,
+          description: `Welcome${session.user.email ? ' ' + session.user.email : ''}!`,
         });
       }
       
@@ -49,10 +49,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [toast]);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const value = {

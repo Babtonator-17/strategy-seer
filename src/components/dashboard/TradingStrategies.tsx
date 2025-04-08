@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,7 +35,7 @@ interface Strategy {
   risk: 'low' | 'medium' | 'high';
 }
 
-const strategies: Strategy[] = [
+const initialStrategies: Strategy[] = [
   {
     id: '1',
     name: 'AI Trend Follower',
@@ -68,19 +68,83 @@ const strategies: Strategy[] = [
 const TradingStrategies = () => {
   const [activeFilter, setActiveFilter] = useState('all');
   const [openStrategy, setOpenStrategy] = useState<Strategy | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editRisk, setEditRisk] = useState<number>(50);
+  const [strategies, setStrategies] = useState<Strategy[]>(initialStrategies);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newStrategyName, setNewStrategyName] = useState('');
+  const [newStrategyType, setNewStrategyType] = useState('technical');
+  const [newStrategyRisk, setNewStrategyRisk] = useState(50);
 
   const filteredStrategies = activeFilter === 'all' 
     ? strategies 
     : strategies.filter(s => s.type === activeFilter);
 
-  const handleActivateStrategy = (strategyId: string) => {
-    console.log(`Activating strategy ${strategyId}`);
-    // In a real app, this would update the strategy status
-  };
+  const handleActivateStrategy = useCallback((strategyId: string) => {
+    console.info('Activating strategy', strategyId);
+    
+    setStrategies(prev => 
+      prev.map(strategy => {
+        if (strategy.id === strategyId) {
+          return {
+            ...strategy,
+            status: strategy.status === 'active' ? 'inactive' : 'active'
+          };
+        }
+        return strategy;
+      })
+    );
+  }, []);
 
-  const handleEditStrategy = (strategy: Strategy) => {
+  const handleEditStrategy = useCallback((strategy: Strategy) => {
     setOpenStrategy(strategy);
-  };
+    setEditName(strategy.name);
+    setEditRisk(strategy.risk === 'low' ? 25 : strategy.risk === 'medium' ? 50 : 75);
+    setIsEditDialogOpen(true);
+  }, []);
+
+  const handleSaveChanges = useCallback(() => {
+    if (!openStrategy) return;
+    
+    const riskLevel = editRisk <= 33 ? 'low' : editRisk <= 66 ? 'medium' : 'high';
+    
+    setStrategies(prev => 
+      prev.map(strategy => {
+        if (strategy.id === openStrategy.id) {
+          return {
+            ...strategy,
+            name: editName || strategy.name,
+            risk: riskLevel
+          };
+        }
+        return strategy;
+      })
+    );
+    
+    setIsEditDialogOpen(false);
+    setOpenStrategy(null);
+  }, [openStrategy, editName, editRisk]);
+
+  const handleCreateStrategy = useCallback(() => {
+    const riskLevel = newStrategyRisk <= 33 ? 'low' : newStrategyRisk <= 66 ? 'medium' : 'high';
+    
+    const newStrategy: Strategy = {
+      id: `${Date.now()}`,
+      name: newStrategyName || 'New Strategy',
+      description: `Custom ${newStrategyType} trading strategy`,
+      type: newStrategyType as 'ai' | 'technical' | 'custom',
+      status: 'inactive',
+      performance: 0,
+      risk: riskLevel
+    };
+    
+    setStrategies(prev => [...prev, newStrategy]);
+    setNewStrategyName('');
+    setNewStrategyType('technical');
+    setNewStrategyRisk(50);
+    setIsCreateDialogOpen(false);
+  }, [newStrategyName, newStrategyType, newStrategyRisk]);
 
   return (
     <Card className="h-full">
@@ -101,54 +165,15 @@ const TradingStrategies = () => {
             </SelectContent>
           </Select>
           
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="h-8">
-                <Settings className="h-3.5 w-3.5 mr-1" />
-                <span className="text-xs">New</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Strategy</DialogTitle>
-                <DialogDescription>
-                  Configure a new trading strategy for your portfolio.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Strategy Name</label>
-                  <Input placeholder="Enter strategy name" />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Strategy Type</label>
-                  <Select defaultValue="technical">
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select strategy type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ai">AI-Powered</SelectItem>
-                      <SelectItem value="technical">Technical Analysis</SelectItem>
-                      <SelectItem value="custom">Custom Strategy</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <label className="text-sm font-medium">Risk Level</label>
-                    <span className="text-sm text-muted-foreground">Medium</span>
-                  </div>
-                  <Slider defaultValue={[50]} max={100} step={1} />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline">Cancel</Button>
-                <Button>Create Strategy</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="h-8" 
+            onClick={() => setIsCreateDialogOpen(true)}
+          >
+            <Settings className="h-3.5 w-3.5 mr-1" />
+            <span className="text-xs">New</span>
+          </Button>
         </div>
       </CardHeader>
       
@@ -204,49 +229,14 @@ const TradingStrategies = () => {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8" 
-                        onClick={() => handleEditStrategy(strategy)}
-                      >
-                        <Settings className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Edit Strategy</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Strategy Name</label>
-                          <Input defaultValue={openStrategy?.name} />
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <label className="text-sm font-medium">Risk Level</label>
-                            <span className="text-sm text-muted-foreground">
-                              {openStrategy?.risk.charAt(0).toUpperCase() + openStrategy?.risk.slice(1)}
-                            </span>
-                          </div>
-                          <Slider 
-                            defaultValue={[
-                              openStrategy?.risk === 'low' ? 25 : 
-                              openStrategy?.risk === 'medium' ? 50 : 75
-                            ]} 
-                            max={100} 
-                            step={1} 
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button variant="outline">Cancel</Button>
-                        <Button>Save Changes</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8" 
+                    onClick={() => handleEditStrategy(strategy)}
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
                   
                   <div className="flex items-center">
                     <Switch 
@@ -260,12 +250,119 @@ const TradingStrategies = () => {
           )}
           
           {filteredStrategies.length > 0 && filteredStrategies.length < strategies.length && (
-            <Button variant="ghost" className="w-full text-muted-foreground text-sm">
+            <Button 
+              variant="ghost" 
+              className="w-full text-muted-foreground text-sm"
+              onClick={() => setActiveFilter('all')}
+            >
               Show {strategies.length - filteredStrategies.length} more strategies
             </Button>
           )}
         </div>
       </CardContent>
+
+      {/* Edit Strategy Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Strategy</DialogTitle>
+            <DialogDescription>
+              Modify your trading strategy settings
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Strategy Name</label>
+              <Input 
+                value={editName} 
+                onChange={(e) => setEditName(e.target.value)} 
+                placeholder="Enter strategy name"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <label className="text-sm font-medium">Risk Level</label>
+                <span className="text-sm text-muted-foreground">
+                  {editRisk <= 33 ? 'Low' : editRisk <= 66 ? 'Medium' : 'High'}
+                </span>
+              </div>
+              <Slider 
+                value={[editRisk]} 
+                onValueChange={(values) => setEditRisk(values[0])} 
+                max={100} 
+                step={1} 
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveChanges}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Strategy Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Strategy</DialogTitle>
+            <DialogDescription>
+              Configure a new trading strategy for your portfolio.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Strategy Name</label>
+              <Input 
+                value={newStrategyName} 
+                onChange={(e) => setNewStrategyName(e.target.value)} 
+                placeholder="Enter strategy name" 
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Strategy Type</label>
+              <Select value={newStrategyType} onValueChange={setNewStrategyType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select strategy type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ai">AI-Powered</SelectItem>
+                  <SelectItem value="technical">Technical Analysis</SelectItem>
+                  <SelectItem value="custom">Custom Strategy</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <label className="text-sm font-medium">Risk Level</label>
+                <span className="text-sm text-muted-foreground">
+                  {newStrategyRisk <= 33 ? 'Low' : newStrategyRisk <= 66 ? 'Medium' : 'High'}
+                </span>
+              </div>
+              <Slider 
+                value={[newStrategyRisk]} 
+                onValueChange={(values) => setNewStrategyRisk(values[0])} 
+                max={100} 
+                step={1} 
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateStrategy}>
+              Create Strategy
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

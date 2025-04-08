@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Loader2, Bot, User, AlertCircle } from 'lucide-react';
+import { Send, Loader2, Bot, User, AlertCircle, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AssistantConversation } from '@/types/supabase';
@@ -88,16 +88,6 @@ export const AITradingAssistant = () => {
     
     if (!query.trim()) return;
     
-    // Don't proceed if not authenticated
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to use the AI assistant",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     const userMessage: Message = {
       role: 'user',
       content: query,
@@ -154,7 +144,7 @@ export const AITradingAssistant = () => {
         ...prev,
         {
           role: 'assistant',
-          content: "I'm sorry, I encountered an error processing your request. Please try again later.",
+          content: "I'm sorry, I encountered an error processing your request. Please try again later or try with a different question.",
           timestamp: new Date().toISOString()
         }
       ]);
@@ -176,7 +166,7 @@ export const AITradingAssistant = () => {
     
     // Set the query and remove the last assistant message (if it exists)
     setQuery(lastUserMessage.content);
-    setMessages(messages.slice(0, actualIndex));
+    setMessages(messages.slice(0, actualIndex + 1));
   };
   
   return (
@@ -237,15 +227,23 @@ export const AITradingAssistant = () => {
                 <AlertCircle className="h-5 w-5 text-amber-500" />
                 <p className="font-medium text-amber-500">Login Required</p>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground mb-2">
                 Please sign in to use the AI assistant
               </p>
+              <p className="text-xs text-muted-foreground">
+                You can try the assistant without login but your conversations won't be saved
+              </p>
             </div>
-            <Button className="w-full" asChild>
-              <Link to="/auth">
-                Login or Create Account
-              </Link>
-            </Button>
+            <div className="flex gap-2 justify-center">
+              <Button className="flex-1" asChild>
+                <Link to="/auth">
+                  Login or Create Account
+                </Link>
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setMessages([welcomeMessage])}>
+                Try Without Login
+              </Button>
+            </div>
           </div>
         ) : authLoading ? (
           <div className="w-full flex justify-center p-4">
@@ -255,15 +253,22 @@ export const AITradingAssistant = () => {
           <>
             {error && (
               <div className="w-full mb-4 p-2 bg-destructive/10 border border-destructive/20 rounded-md">
-                <p className="text-xs text-destructive">Error: {error}</p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-1 text-xs h-7 px-2" 
-                  onClick={retryLastMessage}
-                >
-                  Try Again
-                </Button>
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                  <p className="text-xs text-destructive">Error communicating with assistant</p>
+                </div>
+                <div className="flex justify-between items-center mt-1">
+                  <p className="text-xs text-muted-foreground">Try another question or retry your last message</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs h-7 px-2 flex items-center gap-1" 
+                    onClick={retryLastMessage}
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    Try Again
+                  </Button>
+                </div>
               </div>
             )}
             <form onSubmit={handleSubmit} className="w-full flex gap-2">
