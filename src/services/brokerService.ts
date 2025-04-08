@@ -53,6 +53,47 @@ export const getConnectionStatus = () => {
   return { connected: true, type: connection.type };
 };
 
+// Store broker connection in localStorage for persistence across sessions
+export const storeBrokerConnection = (connectionId, type, name = null) => {
+  try {
+    const connection = {
+      id: connectionId,
+      type,
+      name: name || `${type} Connection`,
+      timestamp: new Date().toISOString(),
+      isActive: true
+    };
+    
+    // Save as current broker
+    localStorage.setItem('currentBroker', JSON.stringify(connection));
+    
+    // Add to connections history
+    const storedConnections = JSON.parse(localStorage.getItem('brokerConnections') || '[]');
+    const connectionExists = storedConnections.some((conn) => conn.id === connectionId);
+    
+    if (!connectionExists) {
+      storedConnections.push(connection);
+    } else {
+      // Update existing connection
+      const updatedConnections = storedConnections.map((conn) => {
+        if (conn.id === connectionId) {
+          return { ...conn, isActive: true, timestamp: connection.timestamp };
+        }
+        return conn;
+      });
+      storedConnections.splice(0, storedConnections.length, ...updatedConnections);
+    }
+    
+    localStorage.setItem('brokerConnections', JSON.stringify(storedConnections));
+    console.log(`Broker connection stored: ${type} (${connectionId})`);
+    
+    return true;
+  } catch (error) {
+    console.error('Error storing broker connection:', error);
+    return false;
+  }
+};
+
 // Helper function to get realistic demo market data
 export const getMarketData = (symbol: string) => {
   const baseData: Record<string, any> = {

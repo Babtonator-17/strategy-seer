@@ -1,17 +1,25 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import AITradingAssistant from '@/components/assistant/AITradingAssistant';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/providers/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Bot, Briefcase } from 'lucide-react';
+import { ArrowRight, Bot, Briefcase, CircleAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { isBrokerConnected, getConnectionStatus } from '@/services/brokerService';
 
 const Assistant = () => {
   const isMobile = useIsMobile();
   const { user } = useAuth();
+  const [brokerStatus, setBrokerStatus] = useState({ connected: false, type: null });
+  
+  useEffect(() => {
+    // Check broker connection status
+    const status = getConnectionStatus();
+    setBrokerStatus(status);
+  }, []);
   
   return (
     <DashboardLayout>
@@ -35,9 +43,11 @@ const Assistant = () => {
           
           {user && (
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="flex items-center gap-1">
+              <Badge variant={brokerStatus.connected ? "outline" : "secondary"} className="flex items-center gap-1">
                 <Briefcase className="h-3.5 w-3.5" />
-                Demo Broker Connected
+                {brokerStatus.connected 
+                  ? `${brokerStatus.type} Broker Connected` 
+                  : "No Broker Connected"}
               </Badge>
               <Button asChild size="sm" variant="outline">
                 <Link to="/settings">

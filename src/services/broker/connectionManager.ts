@@ -1,6 +1,6 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { BrokerConnectionParams, BrokerType } from "./types";
+import { storeBrokerConnection } from "../brokerService";
 
 // Track current broker connection state
 let currentBrokerType: BrokerType = BrokerType.DEMO;
@@ -29,22 +29,7 @@ export const setCurrentBrokerConnection = (type: BrokerType, connectionId: strin
   console.log(`Current broker set to ${type} (ID: ${connectionId})`);
   
   // Store in localStorage for persistence across sessions
-  try {
-    const storedConnections = JSON.parse(localStorage.getItem('brokerConnections') || '[]');
-    const connectionExists = storedConnections.some((conn: any) => conn.id === connectionId);
-    
-    if (!connectionExists) {
-      storedConnections.push({ 
-        id: connectionId, 
-        type, 
-        timestamp: new Date().toISOString(),
-        isActive: true
-      });
-      localStorage.setItem('brokerConnections', JSON.stringify(storedConnections));
-    }
-  } catch (error) {
-    console.error('Error storing broker connection in localStorage:', error);
-  }
+  storeBrokerConnection(connectionId, type);
 };
 
 /**
@@ -292,10 +277,7 @@ export const getAccountInfo = async (): Promise<any> => {
           marginLevel: 100,
           freeMargin: 10000,
           currency: 'USD',
-          leverage: 1,
-          accountType: 'Unknown',
-          server: 'Unknown',
-          name: 'Trading Account'
+          error: 'Failed to fetch account information'
         };
     }
   } catch (error) {
