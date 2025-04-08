@@ -6,7 +6,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/providers/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Bot } from 'lucide-react';
+import { ArrowRight, Bot, Briefcase } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 const Assistant = () => {
   const isMobile = useIsMobile();
@@ -19,7 +20,7 @@ const Assistant = () => {
           <div>
             <h1 className="text-xl md:text-2xl font-bold">AI Assistant</h1>
             <p className="text-sm md:text-base text-muted-foreground">
-              Get help with trading strategies, market analysis, and platform navigation
+              Get help with trading strategies, market analysis, and execute trades with voice commands
             </p>
           </div>
           
@@ -30,6 +31,20 @@ const Assistant = () => {
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
+          )}
+          
+          {user && (
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="flex items-center gap-1">
+                <Briefcase className="h-3.5 w-3.5" />
+                Demo Broker Connected
+              </Badge>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/settings">
+                  Manage Brokers
+                </Link>
+              </Button>
+            </div>
           )}
         </div>
         
@@ -45,19 +60,18 @@ const Assistant = () => {
             <div>
               <h3 className="font-medium mb-1">How to use the AI Assistant</h3>
               <p className="text-sm text-muted-foreground">
-                The assistant can answer questions about trading strategies, market analysis, 
-                platform features, and more. Try asking about specific indicators, trading concepts, 
-                or how to use different features of the platform.
+                The assistant can answer questions, execute trades with Control Mode enabled, provide market analysis, 
+                and help manage your account. Use voice commands for hands-free operation.
               </p>
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                 <div className="text-xs p-2 bg-background rounded border">
-                  "What is a good risk management strategy?"
+                  "Buy 0.1 BTCUSD at market price"
                 </div>
                 <div className="text-xs p-2 bg-background rounded border">
-                  "How do I connect a new broker account?"
+                  "Show my account balance and open positions"
                 </div>
                 <div className="text-xs p-2 bg-background rounded border">
-                  "Explain how MACD indicator works"
+                  "Analyze EURUSD on the 4-hour chart"
                 </div>
               </div>
             </div>
