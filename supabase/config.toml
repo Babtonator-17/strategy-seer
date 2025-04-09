@@ -16,6 +16,10 @@ max_timeout = 240
 [functions.connect-broker]
 verify_jwt = false
 
+[functions.trading-apis]
+verify_jwt = false
+max_timeout = 60
+
 [db]
 port = 54322
 shadow_port = 54320

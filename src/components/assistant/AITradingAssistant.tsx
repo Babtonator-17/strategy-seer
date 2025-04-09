@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Loader2, Bot, User, AlertCircle, RefreshCw, MicIcon, ShieldCheck } from 'lucide-react';
+import { Send, Loader2, Bot, User, AlertCircle, RefreshCw, MicIcon, ShieldCheck, BarChart4 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AssistantConversation } from '@/types/supabase';
@@ -19,6 +18,7 @@ import SuggestedCommands from './SuggestedCommands';
 import AssistantSettings from './AssistantSettings';
 import useSpeechRecognition from '@/hooks/use-speech-recognition';
 import { fetchMarketNews } from '@/services/aiService';
+import { fetchTechnicalAnalysis, fetchCryptoMarketData, fetchCommodityPrices } from '@/services/marketApiService';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -54,6 +54,8 @@ export const AITradingAssistant = () => {
     { text: "BTCUSD Analysis", command: "Analyze BTCUSD trend" },
     { text: "Risk Management", command: "Help with risk management" }
   ]);
+  const [marketData, setMarketData] = useState<any>(null);
+  const [isLoadingMarketData, setIsLoadingMarketData] = useState(false);
   
   const welcomeMessage: Message = {
     role: 'assistant',
@@ -105,7 +107,66 @@ export const AITradingAssistant = () => {
     };
     
     fetchConversation();
+    
+    fetchInitialMarketData();
   }, [user]);
+  
+  const fetchInitialMarketData = async () => {
+    setIsLoadingMarketData(true);
+    try {
+      const [cryptoData, commodityData, newsData] = await Promise.all([
+        fetchCryptoMarketData('bitcoin,ethereum,ripple,solana,cardano'),
+        fetchCommodityPrices(),
+        fetchMarketNews(undefined, 5)
+      ]);
+      
+      setMarketData({
+        crypto: cryptoData,
+        commodities: commodityData,
+        news: newsData
+      });
+      
+      const newCommands: CommandButton[] = [];
+      
+      if (cryptoData && cryptoData.length > 0) {
+        const topCrypto = cryptoData[0];
+        newCommands.push({
+          text: `${topCrypto.name} Analysis`,
+          command: `Analyze ${topCrypto.symbol} price trend`
+        });
+      }
+      
+      if (commodityData && commodityData.length > 0) {
+        const topCommodity = commodityData[0];
+        newCommands.push({
+          text: `${topCommodity.name} Market`,
+          command: `What's happening with ${topCommodity.name.toLowerCase()} prices?`
+        });
+      }
+      
+      if (newsData && newsData.length > 0) {
+        newsData.slice(0, 2).forEach(item => {
+          if (item.instruments && item.instruments.length > 0) {
+            newCommands.push({
+              text: `${item.instruments[0]} News`,
+              command: `Tell me about ${item.instruments[0]} based on this news: ${item.title}`
+            });
+          }
+        });
+      }
+      
+      if (newCommands.length > 0) {
+        setSuggestedCommands(prevCommands => {
+          const originalCommands = prevCommands.slice(0, 2);
+          return [...originalCommands, ...newCommands.slice(0, 4)];
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching initial market data:', error);
+    } finally {
+      setIsLoadingMarketData(false);
+    }
+  };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,17 +185,69 @@ export const AITradingAssistant = () => {
     setError(null);
     
     try {
-      // Get market news data for context if relevant
-      let marketNewsData = null;
+      let marketContextData: any = {};
+      
+      const lowerQuery = query.toLowerCase();
+      
       if (
-        query.toLowerCase().includes('news') || 
-        query.toLowerCase().includes('market') ||
-        query.toLowerCase().includes('commodity') || 
-        query.toLowerCase().includes('commodities') ||
-        query.toLowerCase().includes('latest')
+        lowerQuery.includes('technical') || 
+        lowerQuery.includes('analysis') ||
+        lowerQuery.includes('indicators') ||
+        lowerQuery.includes('chart') ||
+        lowerQuery.includes('rsi') ||
+        lowerQuery.includes('macd')
+      ) {
+        const symbolMatch = lowerQuery.match(/\b(btc|eth|xrp|ada|btcusd|ethusd|eurusd|gbpusd|usdjpy|gold|xauusd)\b/i);
+        if (symbolMatch) {
+          const symbol = symbolMatch[0].toUpperCase();
+          try {
+            marketContextData.technicalAnalysis = await fetchTechnicalAnalysis(symbol);
+          } catch (err) {
+            console.error('Error fetching technical analysis for context:', err);
+          }
+        }
+      }
+      
+      if (
+        lowerQuery.includes('crypto') ||
+        lowerQuery.includes('bitcoin') ||
+        lowerQuery.includes('btc') ||
+        lowerQuery.includes('ethereum') ||
+        lowerQuery.includes('eth')
       ) {
         try {
-          marketNewsData = await fetchMarketNews();
+          marketContextData.cryptoData = await fetchCryptoMarketData();
+        } catch (err) {
+          console.error('Error fetching crypto data for context:', err);
+        }
+      }
+      
+      if (
+        lowerQuery.includes('commodity') ||
+        lowerQuery.includes('commodities') ||
+        lowerQuery.includes('gold') ||
+        lowerQuery.includes('oil') ||
+        lowerQuery.includes('metals')
+      ) {
+        try {
+          marketContextData.commodityData = await fetchCommodityPrices();
+        } catch (err) {
+          console.error('Error fetching commodity data for context:', err);
+        }
+      }
+      
+      if (
+        lowerQuery.includes('news') || 
+        lowerQuery.includes('market') ||
+        lowerQuery.includes('latest') ||
+        lowerQuery.includes('update') ||
+        lowerQuery.includes('information')
+      ) {
+        try {
+          const symbolMatch = lowerQuery.match(/\b(btc|eth|xrp|ada|btcusd|ethusd|eurusd|gbpusd|usdjpy|gold|xauusd)\b/i);
+          const symbol = symbolMatch ? symbolMatch[0].toUpperCase() : undefined;
+          
+          marketContextData.marketNews = await fetchMarketNews(symbol);
         } catch (err) {
           console.error('Error fetching market news for context:', err);
         }
@@ -145,7 +258,7 @@ export const AITradingAssistant = () => {
           query: userMessage.content,
           conversationId,
           controlMode,
-          marketNewsData
+          marketContextData
         }
       });
       
@@ -229,6 +342,13 @@ export const AITradingAssistant = () => {
         { text: "Forex Updates", command: "Latest forex market updates" },
         { text: "Economic Calendar", command: "Important economic events today" }
       ]);
+    } else if (lowerResponse.includes('crypto') || lowerResponse.includes('bitcoin') || lowerResponse.includes('ethereum')) {
+      setSuggestedCommands([
+        { text: "BTC Price", command: "Current Bitcoin price" },
+        { text: "ETH Analysis", command: "Ethereum price analysis" },
+        { text: "Top Cryptos", command: "Show top performing cryptocurrencies" },
+        { text: "Crypto Market", command: "Overall crypto market sentiment" }
+      ]);
     }
   };
   
@@ -248,12 +368,10 @@ export const AITradingAssistant = () => {
   const handleCommandClick = (command: string) => {
     setQuery(command);
     
-    // Focus the input after setting the query value
     setTimeout(() => {
       const inputField = document.getElementById('query-input') as HTMLInputElement;
       if (inputField) {
         inputField.focus();
-        // Manually trigger input event to update React state
         const event = new Event('input', { bubbles: true });
         inputField.dispatchEvent(event);
       }
@@ -267,7 +385,6 @@ export const AITradingAssistant = () => {
         description: "Your trade command has been executed successfully",
       });
       
-      // Add the execution to messages
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: `Trade executed: ${confirmTrade.command.replace('[TRADE:', '').replace(']', '')}`,
@@ -284,6 +401,20 @@ export const AITradingAssistant = () => {
     setConfirmTrade({ show: false, command: null });
   };
   
+  const refreshMarketData = async () => {
+    toast({
+      title: "Refreshing market data",
+      description: "Fetching the latest market information...",
+    });
+    
+    await fetchInitialMarketData();
+    
+    toast({
+      title: "Market data updated",
+      description: "Latest market information is now available",
+    });
+  };
+  
   return (
     <Card className="w-full h-[600px] flex flex-col">
       <CardHeader className="pb-2">
@@ -294,12 +425,24 @@ export const AITradingAssistant = () => {
               Ask questions about trading strategies, brokers, or get help with the platform
             </CardDescription>
           </div>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[180px]">
-            <TabsList className="grid grid-cols-2">
-              <TabsTrigger value="chat">Chat</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex gap-2 items-center">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="h-8" 
+              onClick={refreshMarketData}
+              disabled={isLoadingMarketData}
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoadingMarketData ? 'animate-spin' : ''}`} />
+              <span className="ml-2 hidden sm:inline">Refresh Data</span>
+            </Button>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[180px]">
+              <TabsList className="grid grid-cols-2">
+                <TabsTrigger value="chat">Chat</TabsTrigger>
+                <TabsTrigger value="settings">Settings</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </div>
       </CardHeader>
       
@@ -311,6 +454,35 @@ export const AITradingAssistant = () => {
                 <div className="bg-amber-100 dark:bg-amber-900/20 flex items-center gap-2 px-3 py-1.5 rounded-md mb-3 text-amber-800 dark:text-amber-300 text-xs">
                   <ShieldCheck className="h-4 w-4" />
                   <span>Control Mode Enabled - Assistant can execute trading commands</span>
+                </div>
+              )}
+              
+              {marketData && !isLoadingMarketData && (
+                <div className="bg-muted p-2 rounded-md mb-3 text-xs">
+                  <div className="flex items-center gap-2 mb-1">
+                    <BarChart4 className="h-4 w-4 text-primary" />
+                    <span className="font-medium">Market Data</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {marketData.crypto && marketData.crypto.length > 0 && (
+                      <div>
+                        <span className="text-muted-foreground">BTC:</span> ${marketData.crypto[0].current_price.toLocaleString()}
+                        <span className={marketData.crypto[0].price_change_percentage_24h > 0 ? "text-green-500" : "text-red-500"}>
+                          {' '}{marketData.crypto[0].price_change_percentage_24h > 0 ? '↑' : '↓'}{Math.abs(marketData.crypto[0].price_change_percentage_24h).toFixed(2)}%
+                        </span>
+                      </div>
+                    )}
+                    {marketData.commodities && marketData.commodities.length > 0 && (
+                      <div className="truncate">
+                        <span className="text-muted-foreground">{marketData.commodities[0].name}:</span> ${marketData.commodities[0].price.toLocaleString()}
+                      </div>
+                    )}
+                    {marketData.news && marketData.news.length > 0 && (
+                      <div className="truncate">
+                        <span className="text-muted-foreground">Latest:</span> {marketData.news[0].title.substring(0, 20)}...
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               

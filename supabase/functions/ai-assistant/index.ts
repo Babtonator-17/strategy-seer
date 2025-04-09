@@ -393,7 +393,7 @@ serve(async (req) => {
       }
     );
 
-    const { query, conversationId, controlMode, marketNewsData } = await req.json();
+    const { query, conversationId, controlMode, marketContextData } = await req.json();
     
     if (!query) {
       return new Response(
@@ -402,8 +402,51 @@ serve(async (req) => {
       );
     }
 
+    // Generate response using enhanced prompt with market context
+    let enhancedSystemPrompt = SYSTEM_PROMPT;
+    
+    // Add real-time market data to the system prompt if available
+    if (marketContextData) {
+      enhancedSystemPrompt += "\n\nCURRENT MARKET DATA:\n";
+      
+      // Add technical analysis
+      if (marketContextData.technicalAnalysis) {
+        const ta = marketContextData.technicalAnalysis;
+        enhancedSystemPrompt += `\nTECHNICAL ANALYSIS FOR ${ta.symbol} (${ta.interval}):\n`;
+        if (ta.rsi) enhancedSystemPrompt += `- RSI: ${ta.rsi} (${ta.rsi > 70 ? 'OVERBOUGHT' : ta.rsi < 30 ? 'OVERSOLD' : 'NEUTRAL'})\n`;
+        if (ta.macd) enhancedSystemPrompt += `- MACD: ${ta.macd}, Signal: ${ta.macdSignal}, Histogram: ${ta.macdHist}\n`;
+        if (ta.bbUpper) enhancedSystemPrompt += `- Bollinger Bands: Upper: ${ta.bbUpper}, Middle: ${ta.bbMiddle}, Lower: ${ta.bbLower}\n`;
+        if (ta.sma) enhancedSystemPrompt += `- SMA: ${ta.sma}\n`;
+        if (ta.ema) enhancedSystemPrompt += `- EMA: ${ta.ema}\n`;
+      }
+      
+      // Add crypto data
+      if (marketContextData.cryptoData && marketContextData.cryptoData.length > 0) {
+        enhancedSystemPrompt += "\nCRYPTO MARKET SUMMARY:\n";
+        marketContextData.cryptoData.slice(0, 5).forEach(crypto => {
+          enhancedSystemPrompt += `- ${crypto.name} (${crypto.symbol}): $${crypto.current_price} (${crypto.price_change_percentage_24h > 0 ? '+' : ''}${crypto.price_change_percentage_24h?.toFixed(2)}% 24h)\n`;
+        });
+      }
+      
+      // Add commodity data
+      if (marketContextData.commodityData && marketContextData.commodityData.length > 0) {
+        enhancedSystemPrompt += "\nCOMMODITY PRICES:\n";
+        marketContextData.commodityData.slice(0, 5).forEach(commodity => {
+          enhancedSystemPrompt += `- ${commodity.name}: $${commodity.price} ${commodity.unit || ''}\n`;
+        });
+      }
+      
+      // Add market news
+      if (marketContextData.marketNews && marketContextData.marketNews.length > 0) {
+        enhancedSystemPrompt += "\nLATEST MARKET NEWS:\n";
+        marketContextData.marketNews.slice(0, 3).forEach(news => {
+          enhancedSystemPrompt += `- ${news.title} (${news.source})\n  ${news.summary}\n`;
+        });
+      }
+    }
+    
     // Generate response
-    const mockResponse = generateMockResponse(query, Boolean(controlMode), marketNewsData);
+    const mockResponse = generateMockResponse(query, Boolean(controlMode), enhancedSystemPrompt);
     
     // Process any trading commands in the response
     const isDemoAccount = true; // For now, all accounts are considered demo
@@ -492,7 +535,7 @@ serve(async (req) => {
 });
 
 // Enhanced function to generate responses with trading capabilities and current info
-function generateMockResponse(query: string, controlMode: boolean, marketNewsData: any = null): string {
+function generateMockResponse(query: string, controlMode: boolean, systemPrompt: string): string {
   const lowerQuery = query.toLowerCase();
   
   // Check if this is a trade execution request when control mode is on
@@ -545,13 +588,15 @@ Would you like to modify or close any of these positions?`;
   if (lowerQuery.includes('news') || lowerQuery.includes('latest') || lowerQuery.includes('recent updates')) {
     let newsResponse = "Here's the latest market news:\n\n";
     
-    // Use provided market news data if available, otherwise use mock data
-    const newsData = marketNewsData || mockBrokerData.marketNews;
+    // Use mock data for news
+    const newsData = mockBrokerData.marketNews;
     
     newsData.forEach((news, idx) => {
-      newsResponse += `${idx + 1}. ${news.title} (${news.source})\n`;
-      newsResponse += `   ${news.summary}\n`;
-      newsResponse += `   Sentiment: ${news.sentiment} | Published: ${formatTimestamp(news.timestamp)}\n\n`;
+      if (idx < 5) {
+        newsResponse += `${idx + 1}. ${news.title} (${news.source})\n`;
+        newsResponse += `   ${news.summary}\n`;
+        newsResponse += `   Sentiment: ${news.sentiment} | Published: ${formatTimestamp(news.timestamp)}\n\n`;
+      }
     });
     
     return newsResponse;
@@ -598,7 +643,7 @@ Would you like to modify or close any of these positions?`;
   }
   
   if (lowerQuery.includes('hello') || lowerQuery.includes('hi') || lowerQuery.includes('hey')) {
-    return "Hello! I'm your AI trading assistant. I can help you with trading strategies, broker connections, market analysis, platform navigation, and even execute trades for you when Control Mode is enabled. How can I assist you today?";
+    return "Hello! I'm your AI trading assistant. I can help you with trading strategies, broker connections, market analysis, platform navigation, and even execute trades for you when Control Mode is enabled. I now have access to live market data including technical indicators, cryptocurrency prices, and commodity information. How can I assist you today?";
   }
   
   if (lowerQuery.includes('control mode') || lowerQuery.includes('trade execution')) {
@@ -636,7 +681,8 @@ Would you like to modify or close any of these positions?`;
 Remember to enable Control Mode if you want me to execute actual trading commands.`;
   }
   
-  return "I'm your AI trading assistant. I can help you with trading strategies, broker connections, market analysis, platform navigation, and even execute trades for you when Control Mode is enabled. Feel free to ask me specific questions about any of these topics, or simply tell me what you're trying to achieve with your trading today.";
+  // Generic response for any other query
+  return "I'm your AI trading assistant with access to real-time market data. I can help you with trading strategies, broker connections, market analysis, platform navigation, and even execute trades for you when Control Mode is enabled. Feel free to ask me specific questions about any of these topics, or simply tell me what you're trying to achieve with your trading today.";
 }
 
 // Helper function to format timestamps
