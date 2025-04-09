@@ -87,13 +87,13 @@ const TradingStrategies = () => {
         setIsLoading(true);
         const strategiesData = await getStrategies();
         
-        // Map API strategies to component format
+        // Map API strategies to component format - making sure to cast status correctly
         const mappedStrategies = strategiesData.map(s => ({
           id: s.id,
           name: s.name,
           description: s.description,
           type: s.type === 'ai' ? 'ai' : s.type === 'technical' ? 'technical' : 'custom' as 'ai' | 'technical' | 'custom',
-          status: s.isActive ? 'active' : 'inactive',
+          status: s.isActive ? 'active' : 'inactive' as 'active' | 'inactive', // Ensure correct type
           performance: s.performance?.netProfitPercentage || 0,
           risk: s.risk as 'low' | 'medium' | 'high'
         }));
@@ -179,7 +179,7 @@ const TradingStrategies = () => {
             return {
               ...strategy,
               name: editName || strategy.name,
-              risk: riskLevel
+              risk: riskLevel as 'low' | 'medium' | 'high'
             };
           }
           return strategy;
@@ -224,9 +224,9 @@ const TradingStrategies = () => {
         name: newStrategyName,
         description: `Custom ${newStrategyType} trading strategy`,
         type: newStrategyType as 'ai' | 'technical' | 'custom',
-        status: 'inactive',
+        status: 'inactive', // Explicitly set as 'inactive' to match the type
         performance: 0,
-        risk: riskLevel
+        risk: riskLevel as 'low' | 'medium' | 'high'
       };
       
       setStrategies(prev => [...prev, newStrategy]);
