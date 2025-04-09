@@ -174,7 +174,7 @@ const mockBrokerData = {
       title: 'Silver Follows Gold Higher on Safe-Haven Demand',
       source: 'Precious Metals Daily',
       timestamp: new Date(Date.now() - 18000000).toISOString(),
-      summary: 'Silver prices moved higher, following gold's upward trend, as investors seek safe-haven assets amid economic uncertainties.',
+      summary: 'Silver prices moved higher, following gold\'s upward trend, as investors seek safe-haven assets amid economic uncertainties.',
       instruments: ['XAGUSD'],
       sentiment: 'positive'
     },
@@ -205,7 +205,7 @@ const mockBrokerData = {
       high: 23.89,
       low: 23.42,
       trend: 'bullish',
-      analysis: 'Following gold's uptrend with amplified movements'
+      analysis: 'Following gold\'s uptrend with amplified movements'
     },
     USOIL: {
       name: 'Crude Oil',
