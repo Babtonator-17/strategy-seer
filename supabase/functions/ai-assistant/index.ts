@@ -150,8 +150,109 @@ const mockBrokerData = {
       summary: 'Gold prices have risen due to ongoing geopolitical tensions and concerns about persistent inflation in major economies.',
       instruments: ['XAUUSD'],
       sentiment: 'positive'
+    },
+    {
+      id: 'news4',
+      title: 'Oil Prices Stabilize After Recent Volatility',
+      source: 'Energy Markets Today',
+      timestamp: new Date(Date.now() - 10800000).toISOString(),
+      summary: 'Crude oil prices have stabilized following a period of significant volatility, as traders assess supply constraints and demand forecasts.',
+      instruments: ['USOIL'],
+      sentiment: 'neutral'
+    },
+    {
+      id: 'news5',
+      title: 'Natural Gas Futures Rally on Weather Forecasts',
+      source: 'Commodity Watch',
+      timestamp: new Date(Date.now() - 14400000).toISOString(),
+      summary: 'Natural gas futures rallied as forecasts predict colder-than-normal temperatures in key consumption regions during the coming weeks.',
+      instruments: ['NATGAS'],
+      sentiment: 'positive'
+    },
+    {
+      id: 'news6',
+      title: 'Silver Follows Gold Higher on Safe-Haven Demand',
+      source: 'Precious Metals Daily',
+      timestamp: new Date(Date.now() - 18000000).toISOString(),
+      summary: 'Silver prices moved higher, following gold's upward trend, as investors seek safe-haven assets amid economic uncertainties.',
+      instruments: ['XAGUSD'],
+      sentiment: 'positive'
+    },
+    {
+      id: 'news7',
+      title: 'Copper Declines on Chinese Manufacturing Slowdown',
+      source: 'Industrial Metals Report',
+      timestamp: new Date(Date.now() - 21600000).toISOString(),
+      summary: 'Copper prices declined following data showing a slowdown in Chinese manufacturing activity, raising concerns about future demand.',
+      instruments: ['COPPER'],
+      sentiment: 'negative'
     }
-  ]
+  ],
+  commodities: {
+    XAUUSD: {
+      name: 'Gold',
+      price: 1982.30,
+      change: 0.45,
+      high: 1990.50,
+      low: 1978.20,
+      trend: 'bullish',
+      analysis: 'Rising on safe-haven demand amid geopolitical tensions'
+    },
+    XAGUSD: {
+      name: 'Silver',
+      price: 23.65,
+      change: 0.3,
+      high: 23.89,
+      low: 23.42,
+      trend: 'bullish',
+      analysis: 'Following gold's uptrend with amplified movements'
+    },
+    USOIL: {
+      name: 'Crude Oil',
+      price: 78.25,
+      change: -1.2,
+      high: 79.85,
+      low: 77.90,
+      trend: 'bearish',
+      analysis: 'Pressure from rising inventory levels and demand concerns'
+    },
+    NATGAS: {
+      name: 'Natural Gas',
+      price: 2.42,
+      change: 2.1,
+      high: 2.48,
+      low: 2.36,
+      trend: 'bullish',
+      analysis: 'Gains driven by colder weather forecasts in key regions'
+    },
+    COPPER: {
+      name: 'Copper',
+      price: 3.85,
+      change: -0.8,
+      high: 3.92,
+      low: 3.83,
+      trend: 'bearish',
+      analysis: 'Weakened by manufacturing slowdown in China'
+    },
+    WHEAT: {
+      name: 'Wheat',
+      price: 5.98,
+      change: 0.2,
+      high: 6.05,
+      low: 5.90,
+      trend: 'neutral',
+      analysis: 'Stabilizing after recent volatility due to weather concerns'
+    },
+    CORN: {
+      name: 'Corn',
+      price: 4.25,
+      change: -0.5,
+      high: 4.32,
+      low: 4.20,
+      trend: 'bearish',
+      analysis: 'Pressure from improved harvest forecasts and ample supplies'
+    }
+  }
 };
 
 // Extract trading commands from assistant response
@@ -195,10 +296,22 @@ function executeMockTrade(action, instrument, quantity) {
 function getNewsData(instrument) {
   if (instrument) {
     return mockBrokerData.marketNews.filter(news => 
-      news.instruments.includes(instrument)
+      news.instruments && news.instruments.includes(instrument)
     );
   }
   return mockBrokerData.marketNews;
+}
+
+// Get commodity data
+function getCommodityData(commodity) {
+  if (commodity && mockBrokerData.commodities[commodity]) {
+    return mockBrokerData.commodities[commodity];
+  }
+  
+  // Return all commodities sorted by performance (change)
+  return Object.entries(mockBrokerData.commodities)
+    .map(([symbol, data]) => ({ symbol, ...data }))
+    .sort((a, b) => b.change - a.change);
 }
 
 // Process trading commands in the assistant's response
@@ -280,7 +393,7 @@ serve(async (req) => {
       }
     );
 
-    const { query, conversationId, controlMode } = await req.json();
+    const { query, conversationId, controlMode, marketNewsData } = await req.json();
     
     if (!query) {
       return new Response(
@@ -290,7 +403,7 @@ serve(async (req) => {
     }
 
     // Generate response
-    const mockResponse = generateMockResponse(query, Boolean(controlMode));
+    const mockResponse = generateMockResponse(query, Boolean(controlMode), marketNewsData);
     
     // Process any trading commands in the response
     const isDemoAccount = true; // For now, all accounts are considered demo
@@ -379,7 +492,7 @@ serve(async (req) => {
 });
 
 // Enhanced function to generate responses with trading capabilities and current info
-function generateMockResponse(query: string, controlMode: boolean): string {
+function generateMockResponse(query: string, controlMode: boolean, marketNewsData: any = null): string {
   const lowerQuery = query.toLowerCase();
   
   // Check if this is a trade execution request when control mode is on
@@ -432,27 +545,40 @@ Would you like to modify or close any of these positions?`;
   if (lowerQuery.includes('news') || lowerQuery.includes('latest') || lowerQuery.includes('recent updates')) {
     let newsResponse = "Here's the latest market news:\n\n";
     
-    mockBrokerData.marketNews.forEach((news, idx) => {
+    // Use provided market news data if available, otherwise use mock data
+    const newsData = marketNewsData || mockBrokerData.marketNews;
+    
+    newsData.forEach((news, idx) => {
       newsResponse += `${idx + 1}. ${news.title} (${news.source})\n`;
       newsResponse += `   ${news.summary}\n`;
-      newsResponse += `   Sentiment: ${news.sentiment} | Related to: ${news.instruments.join(', ')}\n\n`;
+      newsResponse += `   Sentiment: ${news.sentiment} | Published: ${formatTimestamp(news.timestamp)}\n\n`;
     });
     
     return newsResponse;
   }
   
   if (lowerQuery.includes('commodity') || lowerQuery.includes('commodities')) {
-    return `Based on the latest market data and news, here are the current best-performing commodities:
-
-1. Gold (XAUUSD): Currently trading at $${mockBrokerData.marketPrices.XAUUSD}, up 0.45% today with positive sentiment due to ongoing geopolitical tensions. Technical indicators suggest a bullish trend continuation.
-
-2. Silver (XAGUSD): Following gold's uptrend with a 0.3% gain. Silver typically amplifies gold's movements and could see stronger gains if industrial demand increases.
-
-3. Natural Gas: Showing strength with a 2.1% gain as weather forecasts predict colder temperatures in key consumption regions.
-
-Oil markets (USOIL) are currently at $${mockBrokerData.marketPrices.USOIL}, down 1.2% today due to rising inventory levels and concerns about demand weakness in major economies.
-
-Would you like a more detailed analysis on any specific commodity?`;
+    const commodities = getCommodityData(null);
+    let topPerformers = commodities.filter(c => c.change > 0).slice(0, 3);
+    let worstPerformers = commodities.filter(c => c.change < 0)
+      .sort((a, b) => a.change - b.change)
+      .slice(0, 2);
+    
+    let response = `Based on the latest market data and news, here are the current best-performing commodities:\n\n`;
+    
+    topPerformers.forEach((commodity, idx) => {
+      response += `${idx + 1}. ${commodity.name} (${commodity.symbol}): Currently trading at $${commodity.price}, ${commodity.change > 0 ? 'up' : 'down'} ${Math.abs(commodity.change)}% today. ${commodity.analysis}.\n\n`;
+    });
+    
+    response += `\nUnderperforming commodities:\n\n`;
+    
+    worstPerformers.forEach((commodity, idx) => {
+      response += `${idx + 1}. ${commodity.name} (${commodity.symbol}): Currently at $${commodity.price}, down ${Math.abs(commodity.change)}% today. ${commodity.analysis}.\n\n`;
+    });
+    
+    response += `Would you like a more detailed analysis on any specific commodity?`;
+    
+    return response;
   }
   
   if (lowerQuery.includes('broker') || lowerQuery.includes('connect')) {
@@ -511,4 +637,23 @@ Remember to enable Control Mode if you want me to execute actual trading command
   }
   
   return "I'm your AI trading assistant. I can help you with trading strategies, broker connections, market analysis, platform navigation, and even execute trades for you when Control Mode is enabled. Feel free to ask me specific questions about any of these topics, or simply tell me what you're trying to achieve with your trading today.";
+}
+
+// Helper function to format timestamps
+function formatTimestamp(timestamp: string): string {
+  try {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMinutes = Math.round((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffMinutes < 60) {
+      return `${diffMinutes} minutes ago`;
+    } else if (diffMinutes < 1440) {
+      return `${Math.floor(diffMinutes / 60)} hours ago`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  } catch (e) {
+    return timestamp;
+  }
 }

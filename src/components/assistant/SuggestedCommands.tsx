@@ -20,7 +20,7 @@ const SuggestedCommands: React.FC<SuggestedCommandsProps> = ({ commands, onComma
           key={idx} 
           variant="outline" 
           size="sm" 
-          className="h-7 text-xs truncate" 
+          className="h-7 text-xs truncate hover:bg-accent" 
           onClick={() => onCommandClick(cmd.command)}
         >
           {cmd.text}

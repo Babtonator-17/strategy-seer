@@ -11,6 +11,7 @@ max_rows = 1000
 [functions]
 [functions.ai-assistant]
 verify_jwt = false
+max_timeout = 120
 
 [functions.connect-broker]
 verify_jwt = false
@@ -19,4 +20,3 @@ verify_jwt = false
 port = 54322
 shadow_port = 54320
 major_version = 15
-

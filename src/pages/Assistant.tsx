@@ -6,20 +6,32 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/providers/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Bot, Briefcase, CircleAlert, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ArrowRight, Bot, Briefcase, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { isBrokerConnected, getConnectionStatus } from '@/services/brokerService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
 
 const Assistant = () => {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const [brokerStatus, setBrokerStatus] = useState({ connected: false, type: null });
+  const { toast } = useToast();
   
   useEffect(() => {
     // Check broker connection status
-    const status = getConnectionStatus();
-    setBrokerStatus(status);
+    const checkBrokerStatus = () => {
+      const status = getConnectionStatus();
+      setBrokerStatus(status);
+      console.log("Broker status:", status);
+    };
+    
+    checkBrokerStatus();
+    
+    // Check again if connections change
+    const interval = setInterval(checkBrokerStatus, 5000);
+    
+    return () => clearInterval(interval);
   }, []);
   
   return (
@@ -101,11 +113,14 @@ const Assistant = () => {
                   size="sm" 
                   className="h-auto py-2 text-xs justify-start"
                   onClick={() => {
-                    // Find the input field in the assistant component and set its value
                     const inputField = document.getElementById('query-input') as HTMLInputElement;
                     if (inputField) {
                       inputField.value = "Buy 0.1 BTCUSD at market price";
                       inputField.focus();
+                      
+                      // Dispatch an input event to trigger React state changes
+                      const event = new Event('input', { bubbles: true });
+                      inputField.dispatchEvent(event);
                     }
                   }}
                 >
@@ -120,6 +135,10 @@ const Assistant = () => {
                     if (inputField) {
                       inputField.value = "Show my account balance and open positions";
                       inputField.focus();
+                      
+                      // Dispatch an input event to trigger React state changes
+                      const event = new Event('input', { bubbles: true });
+                      inputField.dispatchEvent(event);
                     }
                   }}
                 >
@@ -134,6 +153,10 @@ const Assistant = () => {
                     if (inputField) {
                       inputField.value = "Analyze EURUSD on the 4-hour chart";
                       inputField.focus();
+                      
+                      // Dispatch an input event to trigger React state changes
+                      const event = new Event('input', { bubbles: true });
+                      inputField.dispatchEvent(event);
                     }
                   }}
                 >

@@ -18,6 +18,7 @@ import ChatMessage from './ChatMessage';
 import SuggestedCommands from './SuggestedCommands';
 import AssistantSettings from './AssistantSettings';
 import useSpeechRecognition from '@/hooks/use-speech-recognition';
+import { fetchMarketNews } from '@/services/aiService';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -123,11 +124,28 @@ export const AITradingAssistant = () => {
     setError(null);
     
     try {
+      // Get market news data for context if relevant
+      let marketNewsData = null;
+      if (
+        query.toLowerCase().includes('news') || 
+        query.toLowerCase().includes('market') ||
+        query.toLowerCase().includes('commodity') || 
+        query.toLowerCase().includes('commodities') ||
+        query.toLowerCase().includes('latest')
+      ) {
+        try {
+          marketNewsData = await fetchMarketNews();
+        } catch (err) {
+          console.error('Error fetching market news for context:', err);
+        }
+      }
+      
       const { data, error } = await supabase.functions.invoke('ai-assistant', {
         body: { 
           query: userMessage.content,
           conversationId,
-          controlMode
+          controlMode,
+          marketNewsData
         }
       });
       
@@ -197,6 +215,20 @@ export const AITradingAssistant = () => {
         { text: "Margin Level", command: "What's my margin level?" },
         { text: "Trading Limits", command: "Explain my trading limits" }
       ]);
+    } else if (lowerResponse.includes('commodity') || lowerResponse.includes('commodities')) {
+      setSuggestedCommands([
+        { text: "Gold Analysis", command: "Analyze gold price trends" },
+        { text: "Oil Markets", command: "How is oil performing today?" },
+        { text: "Best Commodities", command: "What are the best-performing commodities now?" },
+        { text: "Commodity News", command: "Latest commodity market news" }
+      ]);
+    } else if (lowerResponse.includes('news') || lowerResponse.includes('market')) {
+      setSuggestedCommands([
+        { text: "Market News", command: "Get the latest market news" },
+        { text: "Crypto News", command: "Bitcoin news today" },
+        { text: "Forex Updates", command: "Latest forex market updates" },
+        { text: "Economic Calendar", command: "Important economic events today" }
+      ]);
     }
   };
   
@@ -210,14 +242,46 @@ export const AITradingAssistant = () => {
     const lastUserMessage = messages[actualIndex];
     
     setQuery(lastUserMessage.content);
-    setMessages(messages.slice(0, actualIndex + 1));
+    setMessages(messages.slice(0, actualIndex));
   };
   
   const handleCommandClick = (command: string) => {
     setQuery(command);
+    
+    // Focus the input after setting the query value
     setTimeout(() => {
-      document.getElementById('query-input')?.focus();
-    }, 100);
+      const inputField = document.getElementById('query-input') as HTMLInputElement;
+      if (inputField) {
+        inputField.focus();
+        // Manually trigger input event to update React state
+        const event = new Event('input', { bubbles: true });
+        inputField.dispatchEvent(event);
+      }
+    }, 50);
+  };
+
+  const handleTradeExecution = (confirmed: boolean) => {
+    if (confirmed && confirmTrade.command) {
+      toast({
+        title: "Trade Executed",
+        description: "Your trade command has been executed successfully",
+      });
+      
+      // Add the execution to messages
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `Trade executed: ${confirmTrade.command.replace('[TRADE:', '').replace(']', '')}`,
+        timestamp: new Date().toISOString(),
+        metadata: { 
+          executionResults: [{ 
+            success: true, 
+            message: "Trade executed successfully" 
+          }] 
+        }
+      }]);
+    }
+    
+    setConfirmTrade({ show: false, command: null });
   };
   
   return (
@@ -366,16 +430,10 @@ export const AITradingAssistant = () => {
             {confirmTrade.command}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmTrade({ show: false, command: null })}>
+            <Button variant="outline" onClick={() => handleTradeExecution(false)}>
               Cancel
             </Button>
-            <Button onClick={() => {
-              toast({
-                title: "Trade Executed",
-                description: "Your trade command has been executed successfully",
-              });
-              setConfirmTrade({ show: false, command: null });
-            }}>
+            <Button onClick={() => handleTradeExecution(true)}>
               Confirm Trade
             </Button>
           </DialogFooter>

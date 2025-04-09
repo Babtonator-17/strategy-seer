@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { User, Bot, AlertCircle, CheckCircle, Ban } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -17,6 +18,42 @@ interface ChatMessageProps {
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ message, controlMode, onConfirmTrade }) => {
   const isTradeExecution = message.content.includes('[TRADE:') && message.role === 'assistant';
+  
+  // Extract trade command
+  const extractTradeCommand = () => {
+    const match = message.content.match(/\[TRADE:.*?\]/);
+    return match ? match[0] : null;
+  };
+  
+  // Format message content - highlight key terms and values
+  const formatContent = (content: string) => {
+    if (!content) return '';
+    
+    // Don't process trade execution blocks that will be rendered separately
+    if (controlMode && isTradeExecution) {
+      return content.replace(/\[TRADE:.*?\]/g, '');
+    }
+    
+    // Highlight numbers and percentages
+    let formattedContent = content.replace(
+      /(\$[\d,]+\.?\d*|[\d,]+\.?\d*%|[\d,]+\.?\d* (BTC|ETH|XAU|USD))/g, 
+      '<span class="font-semibold text-primary">$1</span>'
+    );
+    
+    // Highlight instrument names
+    formattedContent = formattedContent.replace(
+      /(BTCUSD|ETHUSD|EURUSD|GBPUSD|XAUUSD|USDJPY)/g,
+      '<span class="font-semibold">$1</span>'
+    );
+    
+    // Handle code blocks
+    formattedContent = formattedContent.replace(
+      /\*\*(.*?)\*\*/g,
+      '<span class="font-bold">$1</span>'
+    );
+    
+    return formattedContent;
+  };
   
   return (
     <div 
@@ -39,35 +76,55 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, controlMode, onConfi
             }
           </div>
           <div>
-            <div className="text-sm whitespace-pre-wrap">
+            <div className="text-sm">
               {controlMode && isTradeExecution ? (
-                <div className="relative">
-                  <div className="bg-yellow-200 dark:bg-yellow-900 p-2 rounded-md mb-2 text-black dark:text-white">
+                <div className="space-y-2">
+                  <div className="bg-yellow-200 dark:bg-yellow-900 p-2.5 rounded-md mb-2 text-black dark:text-white">
                     <div className="flex items-center gap-1 font-semibold mb-1">
                       <AlertCircle className="h-4 w-4" />
                       <span>Trade Execution Request</span>
                     </div>
-                    <p className="text-xs mb-2">{message.content.split('[TRADE:')[0]}</p>
-                    <div className="flex gap-2 justify-end">
-                      <button 
-                        className="px-2 py-1 text-xs bg-white dark:bg-gray-800 text-black dark:text-white rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-                        onClick={() => onConfirmTrade(message.content.match(/\[TRADE:.*?\]/)?.[0] || null)}
-                      >
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Confirm
-                      </button>
-                      <button 
-                        className="px-2 py-1 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded flex items-center"
-                      >
-                        <Ban className="h-3 w-3 mr-1" />
-                        Reject
-                      </button>
+                    <p className="text-xs mb-3">{message.content.split('[TRADE:')[0].trim()}</p>
+                    <div className="flex justify-between items-center border-t pt-2 border-yellow-300 dark:border-yellow-800">
+                      <span className="text-xs font-medium">
+                        Command: {extractTradeCommand()}
+                      </span>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm"
+                          variant="secondary"
+                          className="h-7 text-xs px-2 flex items-center"
+                          onClick={() => onConfirmTrade(extractTradeCommand())}
+                        >
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Confirm
+                        </Button>
+                        <Button 
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs px-2 flex items-center"
+                          onClick={() => {}}
+                        >
+                          <Ban className="h-3 w-3 mr-1" />
+                          Reject
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                  <p>{message.content.replace(/\[TRADE:.*?\]/g, '')}</p>
+                  <div 
+                    className="whitespace-pre-wrap"
+                    dangerouslySetInnerHTML={{ 
+                      __html: formatContent(message.content.replace(/\[TRADE:.*?\]/g, ''))
+                    }} 
+                  />
                 </div>
               ) : (
-                message.content
+                <div 
+                  className="whitespace-pre-wrap"
+                  dangerouslySetInnerHTML={{ 
+                    __html: formatContent(message.content)
+                  }} 
+                />
               )}
               
               {message.metadata?.executionResults && (
