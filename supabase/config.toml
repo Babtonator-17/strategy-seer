@@ -11,7 +11,7 @@ max_rows = 1000
 [functions]
 [functions.ai-assistant]
 verify_jwt = false
-max_timeout = 120
+max_timeout = 240
 
 [functions.connect-broker]
 verify_jwt = false
