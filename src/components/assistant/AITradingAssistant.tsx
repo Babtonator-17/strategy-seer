@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Loader2, Bot, User, AlertCircle, RefreshCw, MicIcon, ShieldCheck, CheckCircle, Ban } from 'lucide-react';
+import { Send, Loader2, Bot, User, AlertCircle, RefreshCw, MicIcon, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AssistantConversation } from '@/types/supabase';
@@ -13,10 +13,11 @@ import { useAuth } from '@/providers/AuthProvider';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import ChatMessage from './ChatMessage';
+import SuggestedCommands from './SuggestedCommands';
+import AssistantSettings from './AssistantSettings';
+import useSpeechRecognition from '@/hooks/use-speech-recognition';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -59,72 +60,9 @@ export const AITradingAssistant = () => {
     timestamp: new Date().toISOString()
   };
   
-  // Speech recognition setup
-  const [isListening, setIsListening] = useState(false);
-  const speechRecognition = useRef<SpeechRecognition | null>(null);
-
-  // Initialize speech recognition
-  const setupSpeechRecognition = () => {
-    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      const SpeechRecognitionAPI = (window.SpeechRecognition || 
-        window.webkitSpeechRecognition) as unknown as SpeechRecognitionStatic;
-      
-      if (SpeechRecognitionAPI) {
-        speechRecognition.current = new SpeechRecognitionAPI();
-        
-        if (speechRecognition.current) {
-          speechRecognition.current.continuous = false;
-          speechRecognition.current.interimResults = false;
-          
-          speechRecognition.current.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            setQuery(transcript);
-            setIsListening(false);
-          };
-          
-          speechRecognition.current.onerror = (event) => {
-            console.error('Speech recognition error', event.error);
-            setIsListening(false);
-            toast({
-              title: "Voice Input Error",
-              description: "Could not recognize speech. Please try again or type your query.",
-              variant: "destructive"
-            });
-          };
-          
-          speechRecognition.current.onend = () => {
-            setIsListening(false);
-          };
-        }
-      }
-    }
-  };
-  
-  const toggleListening = () => {
-    if (!speechRecognition.current) {
-      setupSpeechRecognition();
-    }
-    
-    if (speechRecognition.current) {
-      if (isListening) {
-        speechRecognition.current.stop();
-        setIsListening(false);
-      } else {
-        speechRecognition.current.start();
-        setIsListening(true);
-        toast({
-          title: "Listening...",
-          description: "Speak your query now",
-        });
-      }
-    } else {
-      toast({
-        title: "Voice Input Not Available",
-        description: "Your browser doesn't support voice input. Please type your query instead.",
-        variant: "destructive"
-      });
-    }
-  };
+  const { isListening, toggleListening } = useSpeechRecognition((transcript) => {
+    setQuery(transcript);
+  });
   
   useEffect(() => {
     if (messages.length === 0) {
@@ -166,14 +104,6 @@ export const AITradingAssistant = () => {
     };
     
     fetchConversation();
-    
-    setupSpeechRecognition();
-    
-    return () => {
-      if (speechRecognition.current && isListening) {
-        speechRecognition.current.stop();
-      }
-    };
   }, [user]);
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -290,95 +220,6 @@ export const AITradingAssistant = () => {
     }, 100);
   };
   
-  const renderMessage = (msg: Message, index: number) => {
-    const isTradeExecution = msg.content.includes('[TRADE:') && msg.role === 'assistant';
-    
-    return (
-      <div 
-        key={index}
-        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-      >
-        <div 
-          className={`
-            ${msg.role === 'user' 
-              ? 'bg-primary text-primary-foreground ml-6 md:ml-12' 
-              : 'bg-muted text-foreground mr-6 md:mr-12'
-            } 
-            rounded-lg p-3 max-w-[85%] md:max-w-[80%]
-          `}
-        >
-          <div className="flex items-start gap-2">
-            <div className="mt-0.5">
-              {msg.role === 'user' 
-                ? <User className="h-5 w-5 text-primary-foreground opacity-70" /> 
-                : <Bot className="h-5 w-5 text-foreground opacity-70" />
-              }
-            </div>
-            <div>
-              <div className="text-sm whitespace-pre-wrap">
-                {controlMode && isTradeExecution ? (
-                  <div className="relative">
-                    <div className="bg-yellow-200 dark:bg-yellow-900 p-2 rounded-md mb-2 text-black dark:text-white">
-                      <div className="flex items-center gap-1 font-semibold mb-1">
-                        <AlertCircle className="h-4 w-4" />
-                        <span>Trade Execution Request</span>
-                      </div>
-                      <p className="text-xs mb-2">{msg.content.split('[TRADE:')[0]}</p>
-                      <div className="flex gap-2 justify-end">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-7 text-xs"
-                          onClick={() => setConfirmTrade({ 
-                            show: true,
-                            command: msg.content.match(/\[TRADE:.*?\]/)?.[0] || null
-                          })}
-                        >
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Confirm
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="h-7 text-xs"
-                        >
-                          <Ban className="h-3 w-3 mr-1" />
-                          Reject
-                        </Button>
-                      </div>
-                    </div>
-                    <p>{msg.content.replace(/\[TRADE:.*?\]/g, '')}</p>
-                  </div>
-                ) : (
-                  msg.content
-                )}
-                
-                {msg.metadata?.executionResults && (
-                  <div className="mt-2 p-2 bg-background rounded border">
-                    <p className="text-xs font-medium">Trade Execution Results:</p>
-                    {msg.metadata.executionResults.map((result: any, i: number) => (
-                      <div key={i} className="text-xs mt-1">
-                        <span className={`font-semibold ${result.success ? 'text-green-500' : 'text-red-500'}`}>
-                          {result.success ? '✓ ' : '✗ '}
-                        </span>
-                        {result.message}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {msg.timestamp && (
-                <p className="text-xs opacity-50 mt-1">
-                  {new Date(msg.timestamp).toLocaleTimeString()}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-  
   return (
     <Card className="w-full h-[600px] flex flex-col">
       <CardHeader className="pb-2">
@@ -389,7 +230,7 @@ export const AITradingAssistant = () => {
               Ask questions about trading strategies, brokers, or get help with the platform
             </CardDescription>
           </div>
-          <Tabs defaultValue="chat" onValueChange={setActiveTab} className="w-[180px]">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[180px]">
             <TabsList className="grid grid-cols-2">
               <TabsTrigger value="chat">Chat</TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -409,91 +250,34 @@ export const AITradingAssistant = () => {
                 </div>
               )}
               
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-                {suggestedCommands.map((cmd, idx) => (
-                  <Button 
-                    key={idx} 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-7 text-xs truncate" 
-                    onClick={() => handleCommandClick(cmd.command)}
-                  >
-                    {cmd.text}
-                  </Button>
-                ))}
-              </div>
+              <SuggestedCommands 
+                commands={suggestedCommands}
+                onCommandClick={handleCommandClick}
+              />
             </div>
             
             <Separator className="mb-2" />
             
             <ScrollArea className="flex-grow px-6 pr-2">
               <div className="space-y-4 pt-2">
-                {messages.map((msg, index) => renderMessage(msg, index))}
+                {messages.map((msg, index) => (
+                  <ChatMessage 
+                    key={index}
+                    message={msg}
+                    controlMode={controlMode}
+                    onConfirmTrade={(command) => setConfirmTrade({ show: true, command })}
+                  />
+                ))}
                 <div ref={bottomRef} />
               </div>
             </ScrollArea>
           </TabsContent>
           
           <TabsContent value="settings" className="flex-grow overflow-auto m-0 p-6">
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <h3 className="font-medium">Assistant Settings</h3>
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="control-mode">Control Mode</Label>
-                    <p className="text-xs text-muted-foreground">Allow the assistant to execute trading commands</p>
-                  </div>
-                  <Switch 
-                    id="control-mode" 
-                    checked={controlMode} 
-                    onCheckedChange={setControlMode}
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="voice-commands">Voice Commands</Label>
-                    <p className="text-xs text-muted-foreground">Enable speech-to-text input</p>
-                  </div>
-                  <Switch id="voice-commands" defaultChecked />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="expert-mode">Expert Mode</Label>
-                    <p className="text-xs text-muted-foreground">Get more technical and detailed responses</p>
-                  </div>
-                  <Switch id="expert-mode" />
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div className="space-y-3">
-                <h3 className="font-medium">Connected Broker <Badge variant="outline">Demo</Badge></h3>
-                <p className="text-sm text-muted-foreground">
-                  You're currently using a demo broker connection. All trades are simulated with virtual funds.
-                </p>
-                <Button variant="outline" className="w-full">
-                  Connect Real Broker
-                </Button>
-              </div>
-              
-              <Separator />
-              
-              <div className="space-y-3">
-                <h3 className="font-medium">Conversation Management</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" size="sm">
-                    New Conversation
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Clear History
-                  </Button>
-                </div>
-              </div>
-            </div>
+            <AssistantSettings 
+              controlMode={controlMode}
+              onControlModeChange={setControlMode}
+            />
           </TabsContent>
         </Tabs>
       </CardContent>
@@ -602,4 +386,3 @@ export const AITradingAssistant = () => {
 };
 
 export default AITradingAssistant;
-

@@ -6,9 +6,10 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/providers/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Bot, Briefcase, CircleAlert } from 'lucide-react';
+import { ArrowRight, Bot, Briefcase, CircleAlert, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { isBrokerConnected, getConnectionStatus } from '@/services/brokerService';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const Assistant = () => {
   const isMobile = useIsMobile();
@@ -43,12 +44,33 @@ const Assistant = () => {
           
           {user && (
             <div className="flex items-center gap-2">
-              <Badge variant={brokerStatus.connected ? "outline" : "secondary"} className="flex items-center gap-1">
-                <Briefcase className="h-3.5 w-3.5" />
-                {brokerStatus.connected 
-                  ? `${brokerStatus.type} Broker Connected` 
-                  : "No Broker Connected"}
-              </Badge>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Badge 
+                      variant={brokerStatus.connected ? "outline" : "secondary"} 
+                      className={`flex items-center gap-1 ${brokerStatus.connected ? 'border-green-500' : ''}`}
+                    >
+                      <Briefcase className="h-3.5 w-3.5" />
+                      {brokerStatus.connected 
+                        ? <>
+                            <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
+                            {brokerStatus.type} Broker Connected
+                          </> 
+                        : <>
+                            <AlertTriangle className="h-3 w-3 text-amber-500 mr-1" />
+                            No Broker Connected
+                          </>
+                      }
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {brokerStatus.connected 
+                      ? `You are connected to a ${brokerStatus.type} broker` 
+                      : "Connect a broker to enable trading"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <Button asChild size="sm" variant="outline">
                 <Link to="/settings">
                   Manage Brokers
@@ -74,15 +96,49 @@ const Assistant = () => {
                 and help manage your account. Use voice commands for hands-free operation.
               </p>
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                <div className="text-xs p-2 bg-background rounded border">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-auto py-2 text-xs justify-start"
+                  onClick={() => {
+                    // Find the input field in the assistant component and set its value
+                    const inputField = document.getElementById('query-input') as HTMLInputElement;
+                    if (inputField) {
+                      inputField.value = "Buy 0.1 BTCUSD at market price";
+                      inputField.focus();
+                    }
+                  }}
+                >
                   "Buy 0.1 BTCUSD at market price"
-                </div>
-                <div className="text-xs p-2 bg-background rounded border">
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-auto py-2 text-xs justify-start"
+                  onClick={() => {
+                    const inputField = document.getElementById('query-input') as HTMLInputElement;
+                    if (inputField) {
+                      inputField.value = "Show my account balance and open positions";
+                      inputField.focus();
+                    }
+                  }}
+                >
                   "Show my account balance and open positions"
-                </div>
-                <div className="text-xs p-2 bg-background rounded border">
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-auto py-2 text-xs justify-start"
+                  onClick={() => {
+                    const inputField = document.getElementById('query-input') as HTMLInputElement;
+                    if (inputField) {
+                      inputField.value = "Analyze EURUSD on the 4-hour chart";
+                      inputField.focus();
+                    }
+                  }}
+                >
                   "Analyze EURUSD on the 4-hour chart"
-                </div>
+                </Button>
               </div>
             </div>
           </div>

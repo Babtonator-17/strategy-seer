@@ -1,6 +1,7 @@
+
 // AI service for generating trading recommendations and analysis
 
-import { getOpenPositions } from './brokerService';
+import { getOpenPositions, getMarketData } from './brokerService';
 
 /**
  * AI recommendation interface
@@ -47,10 +48,35 @@ export interface OpenAIConfig {
   enabled: boolean;
 }
 
+/**
+ * News article interface
+ */
+export interface NewsArticle {
+  id: string;
+  title: string;
+  url: string;
+  source: string;
+  publishedAt: string;
+  sentiment: 'positive' | 'negative' | 'neutral';
+  relevance: number;
+  summary?: string;
+  keywords: string[];
+  instruments?: string[];
+}
+
 let openAIConfig: OpenAIConfig = {
   apiKey: '',
   model: 'gpt-4o',
   enabled: false
+};
+
+// Cache for news data to avoid excessive API calls
+const newsCache: {
+  data: NewsArticle[];
+  timestamp: number;
+} = {
+  data: [],
+  timestamp: 0
 };
 
 /**
@@ -71,6 +97,106 @@ export const getOpenAIConfig = (): OpenAIConfig => {
 };
 
 /**
+ * Fetch market news - this would connect to a real news API in production
+ */
+export const fetchMarketNews = async (
+  instruments?: string[],
+  limit: number = 10
+): Promise<NewsArticle[]> => {
+  // Check if we have recent cached news (less than 15 minutes old)
+  const now = Date.now();
+  if (newsCache.data.length > 0 && now - newsCache.timestamp < 15 * 60 * 1000) {
+    console.log('Using cached news data');
+    
+    if (instruments && instruments.length > 0) {
+      return newsCache.data.filter(article => 
+        article.instruments?.some(i => instruments.includes(i))
+      ).slice(0, limit);
+    }
+    
+    return newsCache.data.slice(0, limit);
+  }
+  
+  console.log('Fetching fresh news data');
+  
+  // Mock news data - in a real app, this would call a financial news API
+  const mockNews: NewsArticle[] = [
+    {
+      id: 'news1',
+      title: 'Bitcoin Surges Past $40,000 as Institutional Interest Grows',
+      url: 'https://example.com/bitcoin-news-1',
+      source: 'Crypto Finance News',
+      publishedAt: new Date().toISOString(),
+      sentiment: 'positive',
+      relevance: 0.95,
+      summary: 'Bitcoin has surged past $40,000 as institutional investors continue to show interest in cryptocurrency as an inflation hedge.',
+      keywords: ['bitcoin', 'cryptocurrency', 'institutional investors', 'inflation hedge'],
+      instruments: ['BTCUSD']
+    },
+    {
+      id: 'news2',
+      title: 'EUR/USD Falls After ECB Comments on Interest Rate Outlook',
+      url: 'https://example.com/eurusd-news-1',
+      source: 'FX Daily',
+      publishedAt: new Date(Date.now() - 3600000).toISOString(),
+      sentiment: 'negative',
+      relevance: 0.87,
+      summary: 'The EUR/USD pair fell after ECB officials signaled a cautious approach to future rate hikes, contrasting with the Fed\'s hawkish stance.',
+      keywords: ['EUR/USD', 'ECB', 'interest rates', 'Federal Reserve'],
+      instruments: ['EURUSD']
+    },
+    {
+      id: 'news3',
+      title: 'Gold Rises on Geopolitical Tensions and Inflation Concerns',
+      url: 'https://example.com/gold-news-1',
+      source: 'Commodities Insight',
+      publishedAt: new Date(Date.now() - 7200000).toISOString(),
+      sentiment: 'positive',
+      relevance: 0.82,
+      summary: 'Gold prices have risen due to ongoing geopolitical tensions and concerns about persistent inflation in major economies.',
+      keywords: ['gold', 'geopolitical tensions', 'inflation', 'safe haven'],
+      instruments: ['XAUUSD']
+    },
+    {
+      id: 'news4',
+      title: 'Oil Prices Drop on Rising Inventories and Demand Concerns',
+      url: 'https://example.com/oil-news-1',
+      source: 'Energy Markets Review',
+      publishedAt: new Date(Date.now() - 10800000).toISOString(),
+      sentiment: 'negative',
+      relevance: 0.79,
+      summary: 'Crude oil prices declined following reports of rising U.S. inventories and concerns about weakening global demand.',
+      keywords: ['oil', 'inventories', 'demand', 'energy'],
+      instruments: ['USOIL', 'BRENT']
+    },
+    {
+      id: 'news5',
+      title: 'S&P 500 Reaches New All-Time High Amid Strong Earnings',
+      url: 'https://example.com/sp500-news-1',
+      source: 'Market Watch Daily',
+      publishedAt: new Date(Date.now() - 14400000).toISOString(),
+      sentiment: 'positive',
+      relevance: 0.91,
+      summary: 'The S&P 500 index reached a new all-time high, driven by better-than-expected corporate earnings and positive economic data.',
+      keywords: ['S&P 500', 'stocks', 'earnings', 'economic data'],
+      instruments: ['SPX500']
+    }
+  ];
+  
+  // Update cache
+  newsCache.data = mockNews;
+  newsCache.timestamp = now;
+  
+  if (instruments && instruments.length > 0) {
+    return mockNews.filter(article => 
+      article.instruments?.some(i => instruments.includes(i))
+    ).slice(0, limit);
+  }
+  
+  return mockNews.slice(0, limit);
+};
+
+/**
  * Generate AI response to user query using positions data and market context
  */
 export const generateAIResponse = async (query: string): Promise<string> => {
@@ -82,6 +208,18 @@ export const generateAIResponse = async (query: string): Promise<string> => {
     positionsData = await getOpenPositions();
   } catch (error) {
     console.error('Failed to fetch positions for AI context:', error);
+  }
+  
+  // Get market news for context
+  let newsData = [];
+  try {
+    if (query.toLowerCase().includes('news') || 
+        query.toLowerCase().includes('current') ||
+        query.toLowerCase().includes('latest')) {
+      newsData = await fetchMarketNews(undefined, 5);
+    }
+  } catch (error) {
+    console.error('Failed to fetch news for AI context:', error);
   }
   
   // If OpenAI is enabled, use it for more sophisticated responses
@@ -100,6 +238,7 @@ export const generateAIResponse = async (query: string): Promise<string> => {
               role: 'system',
               content: `You are an AI trading assistant that provides analysis and recommendations. 
                         Current positions: ${JSON.stringify(positionsData)}. 
+                        Latest market news: ${JSON.stringify(newsData)}.
                         Answer concisely but thoroughly, focusing on trading insights and analysis.`
             },
             {
@@ -122,14 +261,46 @@ export const generateAIResponse = async (query: string): Promise<string> => {
     }
   }
   
-  // Generate a context-aware response based on query content and positions
-  // This is a fallback when OpenAI is not enabled or if the API call fails
+  // Context-aware responses based on query
+  if (query.toLowerCase().includes('news') || query.toLowerCase().includes('latest')) {
+    const newsContent = await fetchMarketNews();
+    let newsResponse = "Here's the latest market news:\n\n";
+    
+    newsContent.forEach((article, idx) => {
+      newsResponse += `${idx + 1}. ${article.title} (${article.source})\n`;
+      if (article.summary) {
+        newsResponse += `   Summary: ${article.summary}\n`;
+      }
+      newsResponse += `   Sentiment: ${article.sentiment}\n\n`;
+    });
+    
+    return newsResponse;
+  }
+  
   if (query.toLowerCase().includes('bitcoin') || query.toLowerCase().includes('btc')) {
-    if (positionsData.some(pos => pos.instrument === 'BTCUSD')) {
-      return 'Based on your current BTC/USD position and recent market data, Bitcoin is showing signs of bullish momentum with key resistance at $38,200. Your current position is up $172.50 (+0.47%). Consider setting a trailing stop at $36,300 to secure profits while allowing for continued upside.';
-    } else {
-      return 'Based on recent market data, Bitcoin is showing signs of bullish momentum with key resistance at $37,500. Consider entering on pullbacks to the 20-day EMA around $36,200. Set stop losses at $35,400 and consider taking profits at $38,900 and $40,500.';
+    const btcData = getMarketData('BTCUSD');
+    const btcNews = await fetchMarketNews(['BTCUSD'], 2);
+    
+    let response = `Current Bitcoin price is $${btcData.price.toLocaleString()}, `;
+    response += btcData.change > 0 
+      ? `up ${btcData.change}% today. ` 
+      : `down ${Math.abs(btcData.change)}% today. `;
+    
+    response += `Today's range: $${btcData.low.toLocaleString()} - $${btcData.high.toLocaleString()}. `;
+    
+    if (btcNews.length > 0) {
+      response += `\n\nRecent news: ${btcNews[0].title} - ${btcNews[0].summary}`;
     }
+    
+    if (positionsData.some(pos => pos.instrument === 'BTCUSD')) {
+      const btcPosition = positionsData.find(pos => pos.instrument === 'BTCUSD');
+      response += `\n\nYou currently have a ${btcPosition.type} position of ${btcPosition.volume} BTC, `;
+      response += btcPosition.profit > 0 
+        ? `with a profit of $${btcPosition.profit.toFixed(2)}.` 
+        : `with a loss of $${Math.abs(btcPosition.profit).toFixed(2)}.`;
+    }
+    
+    return response;
   } else if (query.toLowerCase().includes('risk')) {
     const totalRisk = positionsData.reduce((sum, pos) => {
       const riskAmount = pos.type === 'buy' 
@@ -155,6 +326,18 @@ export const generateAIResponse = async (query: string): Promise<string> => {
     2. Your BTC exposure is high relative to your account size, consider taking partial profits
     3. The volatility in ETH/USD suggests increasing your position size gradually rather than all at once
     4. Set a trailing stop on your current profitable positions to lock in gains while letting them run`;
+  } else if (query.toLowerCase().includes('commodit')) {
+    return `Based on the latest market data and news, here are the current best-performing commodities:
+
+1. Gold (XAUUSD): Up 0.45% today with positive sentiment due to ongoing geopolitical tensions. Technical indicators suggest a bullish trend continuation.
+
+2. Silver (XAGUSD): Following gold's uptrend with a 0.3% gain. Silver typically amplifies gold's movements and could see stronger gains if industrial demand increases.
+
+3. Natural Gas: Showing strength with a 2.1% gain as weather forecasts predict colder temperatures in key consumption regions.
+
+Oil markets (USOIL) are currently underperforming, down 1.2% today due to rising inventory levels and concerns about demand weakness in major economies.
+
+Would you like a more detailed analysis on any specific commodity?`;
   } else {
     // Generic response for other types of questions
     return `I've analyzed the current market conditions and your portfolio of ${positionsData.length} positions. ${

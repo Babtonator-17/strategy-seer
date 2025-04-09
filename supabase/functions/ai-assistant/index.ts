@@ -20,6 +20,8 @@ You are a helpful AI trading assistant. You help users with:
 
 5. ACCOUNT MANAGEMENT: Retrieve and explain account information, including balance, margin, open positions, and trading history.
 
+6. NEWS: Stay updated on the latest market news and events that could impact trading decisions.
+
 Be concise, clear, and helpful. If you don't know something, be honest and suggest alternatives.
 Avoid giving specific investment advice that could be construed as financial recommendations.
 
@@ -38,10 +40,14 @@ const COMMAND_PATTERNS = [
   {
     regex: /\[ACCOUNT:(balance|margin|summary)\]/i,
     handler: 'getAccountInfo'
+  },
+  {
+    regex: /\[NEWS:([\w\/]+)]/i,
+    handler: 'getNews'
   }
 ];
 
-// Mock broker data for demo accounts
+// Enhanced mock broker data
 const mockBrokerData = {
   accountInfo: {
     balance: 10000,
@@ -111,8 +117,41 @@ const mockBrokerData = {
     GBPUSD: 1.2645,
     USDJPY: 151.35,
     BTCUSD: 36500.75,
-    ETHUSD: 2365.50
-  }
+    ETHUSD: 2365.50,
+    XAUUSD: 1982.30,
+    USOIL: 78.25,
+    SPX500: 4890.75,
+    NASDAQ: 17650.30
+  },
+  marketNews: [
+    {
+      id: 'news1',
+      title: 'Bitcoin Surges Past $40,000 as Institutional Interest Grows',
+      source: 'Crypto Finance News',
+      timestamp: new Date().toISOString(),
+      summary: 'Bitcoin has surged past $40,000 as institutional investors continue to show interest in cryptocurrency as an inflation hedge.',
+      instruments: ['BTCUSD'],
+      sentiment: 'positive'
+    },
+    {
+      id: 'news2',
+      title: 'EUR/USD Falls After ECB Comments on Interest Rate Outlook',
+      source: 'FX Daily',
+      timestamp: new Date(Date.now() - 3600000).toISOString(),
+      summary: 'The EUR/USD pair fell after ECB officials signaled a cautious approach to future rate hikes, contrasting with the Fed\'s hawkish stance.',
+      instruments: ['EURUSD'],
+      sentiment: 'negative'
+    },
+    {
+      id: 'news3',
+      title: 'Gold Rises on Geopolitical Tensions and Inflation Concerns',
+      source: 'Commodities Insight',
+      timestamp: new Date(Date.now() - 7200000).toISOString(),
+      summary: 'Gold prices have risen due to ongoing geopolitical tensions and concerns about persistent inflation in major economies.',
+      instruments: ['XAUUSD'],
+      sentiment: 'positive'
+    }
+  ]
 };
 
 // Extract trading commands from assistant response
@@ -152,6 +191,16 @@ function executeMockTrade(action, instrument, quantity) {
   };
 }
 
+// Get news data
+function getNewsData(instrument) {
+  if (instrument) {
+    return mockBrokerData.marketNews.filter(news => 
+      news.instruments.includes(instrument)
+    );
+  }
+  return mockBrokerData.marketNews;
+}
+
 // Process trading commands in the assistant's response
 function processCommands(response, isDemoAccount) {
   const commands = extractCommands(response);
@@ -163,7 +212,7 @@ function processCommands(response, isDemoAccount) {
       let result = { success: false, message: 'Command not executed' };
       
       // Only execute commands in demo mode or if we have verification
-      if (isDemoAccount || cmd.type === 'getAccountInfo') {
+      if (isDemoAccount || cmd.type === 'getAccountInfo' || cmd.type === 'getNews') {
         switch (cmd.type) {
           case 'executeTrade':
             result = executeMockTrade(cmd.action, cmd.target, cmd.quantity);
@@ -181,6 +230,14 @@ function processCommands(response, isDemoAccount) {
                 ? mockBrokerData.accountInfo 
                 : mockBrokerData.accountInfo[cmd.action],
               message: `Account ${cmd.action} retrieved`
+            };
+            break;
+          case 'getNews':
+            const newsData = getNewsData(cmd.target);
+            result = {
+              success: true,
+              data: newsData,
+              message: `News for ${cmd.target || 'all instruments'} retrieved`
             };
             break;
         }
@@ -210,20 +267,18 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+    
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      supabaseUrl,
+      supabaseKey,
       {
         global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+          headers: { Authorization: req.headers.get('Authorization') || '' },
         },
       }
     );
-
-    // For demo purposes, we'll accept unauthorized requests but won't save them
-    const {
-      data: { session },
-    } = await supabaseClient.auth.getSession();
 
     const { query, conversationId, controlMode } = await req.json();
     
@@ -256,7 +311,10 @@ serve(async (req) => {
       metadata: hasCommands ? { executionResults } : undefined
     };
     
-    if (session && conversationId) {
+    // Try to get the current user session
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    
+    if (session?.user && conversationId) {
       // Update existing conversation
       const { data: existingConversation, error: fetchError } = await supabaseClient
         .from('assistant_conversations')
@@ -282,7 +340,7 @@ serve(async (req) => {
           console.error('Error updating conversation:', updateError);
         }
       }
-    } else if (session) {
+    } else if (session?.user) {
       // Create a new conversation
       const { data: newConversation, error: insertError } = await supabaseClient
         .from('assistant_conversations')
@@ -320,13 +378,13 @@ serve(async (req) => {
   }
 });
 
-// Enhanced function to generate responses with trading capabilities
+// Enhanced function to generate responses with trading capabilities and current info
 function generateMockResponse(query: string, controlMode: boolean): string {
   const lowerQuery = query.toLowerCase();
   
   // Check if this is a trade execution request when control mode is on
   if (controlMode && (lowerQuery.includes('buy') || lowerQuery.includes('sell'))) {
-    const instruments = ['EURUSD', 'BTCUSD', 'GBPUSD', 'ETHUSD', 'USDJPY'];
+    const instruments = Object.keys(mockBrokerData.marketPrices);
     let instrument = 'BTCUSD'; // Default
     
     // Try to determine instrument from query
@@ -344,7 +402,7 @@ function generateMockResponse(query: string, controlMode: boolean): string {
     // Determine if buy or sell
     const action = lowerQuery.includes('sell') ? 'sell' : 'buy';
     
-    return `I'll execute a ${action} order for ${volume} ${instrument}. 
+    return `I'll execute a ${action} order for ${volume} ${instrument} at the current market price of $${mockBrokerData.marketPrices[instrument]}. 
 
 [TRADE:${action}:${instrument}:${volume}]
 
@@ -369,6 +427,32 @@ Would you like to know about your open positions as well?`;
 Total portfolio profit: +24.98 USD
 
 Would you like to modify or close any of these positions?`;
+  }
+  
+  if (lowerQuery.includes('news') || lowerQuery.includes('latest') || lowerQuery.includes('recent updates')) {
+    let newsResponse = "Here's the latest market news:\n\n";
+    
+    mockBrokerData.marketNews.forEach((news, idx) => {
+      newsResponse += `${idx + 1}. ${news.title} (${news.source})\n`;
+      newsResponse += `   ${news.summary}\n`;
+      newsResponse += `   Sentiment: ${news.sentiment} | Related to: ${news.instruments.join(', ')}\n\n`;
+    });
+    
+    return newsResponse;
+  }
+  
+  if (lowerQuery.includes('commodity') || lowerQuery.includes('commodities')) {
+    return `Based on the latest market data and news, here are the current best-performing commodities:
+
+1. Gold (XAUUSD): Currently trading at $${mockBrokerData.marketPrices.XAUUSD}, up 0.45% today with positive sentiment due to ongoing geopolitical tensions. Technical indicators suggest a bullish trend continuation.
+
+2. Silver (XAGUSD): Following gold's uptrend with a 0.3% gain. Silver typically amplifies gold's movements and could see stronger gains if industrial demand increases.
+
+3. Natural Gas: Showing strength with a 2.1% gain as weather forecasts predict colder temperatures in key consumption regions.
+
+Oil markets (USOIL) are currently at $${mockBrokerData.marketPrices.USOIL}, down 1.2% today due to rising inventory levels and concerns about demand weakness in major economies.
+
+Would you like a more detailed analysis on any specific commodity?`;
   }
   
   if (lowerQuery.includes('broker') || lowerQuery.includes('connect')) {
@@ -413,7 +497,12 @@ Would you like to modify or close any of these positions?`;
    - "What's the technical outlook for EURUSD?"
    - "Show me support and resistance levels for ETHUSD"
 
-4. Learning:
+4. News & Market Info:
+   - "Show me the latest market news"
+   - "What's happening with gold today?"
+   - "Tell me about current commodities performance"
+
+5. Learning:
    - "Explain RSI indicator"
    - "How does leverage work?"
    - "What is a good risk management strategy?"
