@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { 
   fetchMarketNews, 
@@ -29,6 +28,7 @@ export const useMarketData = (
     setIsLoadingMarketData(true);
     try {
       const [cryptoData, commodityData, newsData] = await Promise.all([
+        // Using string format which is now acceptable by the updated fetchCryptoMarketData function
         fetchCryptoMarketData('bitcoin,ethereum,ripple,solana,cardano'),
         fetchCommodityPrices(),
         fetchMarketNews(undefined, 5)
