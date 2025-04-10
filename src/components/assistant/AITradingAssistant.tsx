@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -162,7 +163,7 @@ export const AITradingAssistant = () => {
         lowerQuery.includes('eth')
       ) {
         try {
-          // Fix: Pass the string directly since fetchCryptoMarketData now accepts string or string[]
+          // Using string parameter which is now properly handled by fetchCryptoMarketData
           marketContextData.cryptoData = await fetchCryptoMarketData('bitcoin,ethereum,ripple,solana,cardano');
         } catch (err) {
           console.error('Error fetching crypto data for context:', err);
