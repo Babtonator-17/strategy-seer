@@ -91,7 +91,7 @@ export const fetchTechnicalAnalysis = async (symbol: string, interval: string = 
 // Fetch crypto market data
 export const fetchCryptoMarketData = async (coins?: string | string[]): Promise<CryptoMarketData[]> => {
   try {
-    // Convert string to comma-separated format if it's a string array
+    // Convert string array to comma-separated format if it's an array
     let coinsParam = coins;
     if (Array.isArray(coins)) {
       coinsParam = coins.join(',');
