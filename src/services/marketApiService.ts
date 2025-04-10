@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 // Interface for technical analysis data
@@ -88,7 +87,7 @@ export const fetchTechnicalAnalysis = async (symbol: string, interval: string = 
   }
 };
 
-// Fetch crypto market data
+// Fetch crypto market data - Clearly accepting both string and string[] types
 export const fetchCryptoMarketData = async (coins?: string | string[]): Promise<CryptoMarketData[]> => {
   try {
     // Convert string array to comma-separated format if it's an array
