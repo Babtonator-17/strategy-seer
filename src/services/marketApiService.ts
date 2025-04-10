@@ -59,9 +59,8 @@ export const fetchMarketNews = async (symbol?: string, limit?: number): Promise<
     }
     
     const { data, error } = await supabase.functions.invoke('trading-apis', {
-      body: null,
-      method: 'GET',
-      path: url
+      body: { url, action: 'market-news', symbol },
+      method: 'POST'
     });
     
     if (error) throw new Error(error.message);
@@ -82,9 +81,8 @@ export const fetchMarketNews = async (symbol?: string, limit?: number): Promise<
 export const fetchTechnicalAnalysis = async (symbol: string, interval: string = 'daily'): Promise<TechnicalAnalysisData | null> => {
   try {
     const { data, error } = await supabase.functions.invoke('trading-apis', {
-      body: null,
-      method: 'GET',
-      path: `technical-analysis?symbol=${encodeURIComponent(symbol)}&interval=${interval}`
+      body: { action: 'technical-analysis', symbol, interval },
+      method: 'POST'
     });
     
     if (error) throw new Error(error.message);
@@ -98,15 +96,9 @@ export const fetchTechnicalAnalysis = async (symbol: string, interval: string = 
 // Fetch crypto market data
 export const fetchCryptoMarketData = async (coins?: string): Promise<CryptoMarketData[]> => {
   try {
-    let url = `crypto-market`;
-    if (coins) {
-      url += `?coins=${encodeURIComponent(coins)}`;
-    }
-    
     const { data, error } = await supabase.functions.invoke('trading-apis', {
-      body: null,
-      method: 'GET',
-      path: url
+      body: { action: 'crypto-market', coins },
+      method: 'POST'
     });
     
     if (error) throw new Error(error.message);
@@ -121,9 +113,8 @@ export const fetchCryptoMarketData = async (coins?: string): Promise<CryptoMarke
 export const fetchCommodityPrices = async (): Promise<CommodityData[]> => {
   try {
     const { data, error } = await supabase.functions.invoke('trading-apis', {
-      body: null,
-      method: 'GET',
-      path: 'commodity-prices'
+      body: { action: 'commodity-prices' },
+      method: 'POST'
     });
     
     if (error) throw new Error(error.message);
@@ -138,9 +129,8 @@ export const fetchCommodityPrices = async (): Promise<CommodityData[]> => {
 export const fetchStockQuote = async (symbol: string) => {
   try {
     const { data, error } = await supabase.functions.invoke('trading-apis', {
-      body: null,
-      method: 'GET',
-      path: `stock-quote?symbol=${encodeURIComponent(symbol)}`
+      body: { action: 'stock-quote', symbol },
+      method: 'POST'
     });
     
     if (error) throw new Error(error.message);
@@ -155,9 +145,8 @@ export const fetchStockQuote = async (symbol: string) => {
 export const fetchBatchQuotes = async (symbols: string[]) => {
   try {
     const { data, error } = await supabase.functions.invoke('trading-apis', {
-      body: { symbols },
-      method: 'POST',
-      path: 'batch-quotes'
+      body: { action: 'batch-quotes', symbols },
+      method: 'POST'
     });
     
     if (error) throw new Error(error.message);
@@ -172,9 +161,8 @@ export const fetchBatchQuotes = async (symbols: string[]) => {
 export const fetchTwitterSentiment = async (query: string) => {
   try {
     const { data, error } = await supabase.functions.invoke('trading-apis', {
-      body: null,
-      method: 'GET',
-      path: `twitter-sentiment?query=${encodeURIComponent(query)}`
+      body: { action: 'twitter-sentiment', query },
+      method: 'POST'
     });
     
     if (error) throw new Error(error.message);
