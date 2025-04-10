@@ -53,13 +53,8 @@ export interface CommodityData {
 // Fetch market news
 export const fetchMarketNews = async (symbol?: string, limit?: number): Promise<MarketNewsItem[]> => {
   try {
-    let url = `market-news`;
-    if (symbol) {
-      url += `?symbol=${encodeURIComponent(symbol)}`;
-    }
-    
     const { data, error } = await supabase.functions.invoke('trading-apis', {
-      body: { url, action: 'market-news', symbol },
+      body: { action: 'market-news', symbol },
       method: 'POST'
     });
     
@@ -94,10 +89,16 @@ export const fetchTechnicalAnalysis = async (symbol: string, interval: string = 
 };
 
 // Fetch crypto market data
-export const fetchCryptoMarketData = async (coins?: string): Promise<CryptoMarketData[]> => {
+export const fetchCryptoMarketData = async (coins?: string | string[]): Promise<CryptoMarketData[]> => {
   try {
+    // Convert string to comma-separated format if it's a string array
+    let coinsParam = coins;
+    if (Array.isArray(coins)) {
+      coinsParam = coins.join(',');
+    }
+    
     const { data, error } = await supabase.functions.invoke('trading-apis', {
-      body: { action: 'crypto-market', coins },
+      body: { action: 'crypto-market', coins: coinsParam },
       method: 'POST'
     });
     

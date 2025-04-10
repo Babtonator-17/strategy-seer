@@ -13,7 +13,8 @@ serve(async (req) => {
   }
 
   try {
-    const { action, symbol, interval, coins, query, symbols } = await req.json();
+    const requestBody = await req.json();
+    const { action, symbol, interval, coins, query, symbols } = requestBody;
     
     if (!action) {
       return new Response(
