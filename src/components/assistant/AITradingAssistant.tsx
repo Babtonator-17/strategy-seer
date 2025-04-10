@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,6 @@ import useSpeechRecognition from '@/hooks/use-speech-recognition';
 import { fetchMarketNews } from '@/services/aiService';
 import { fetchTechnicalAnalysis, fetchCryptoMarketData, fetchCommodityPrices } from '@/services/marketApiService';
 
-// Import our new components
 import MessageList from './MessageList';
 import SuggestedCommands from './SuggestedCommands';
 import AssistantSettings from './AssistantSettings';
