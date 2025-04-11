@@ -192,7 +192,7 @@ export const AITradingAssistant = () => {
           const symbolMatch = lowerQuery.match(/\b(btc|eth|xrp|ada|btcusd|ethusd|eurusd|gbpusd|usdjpy|gold|xauusd)\b/i);
           const symbol = symbolMatch ? symbolMatch[0].toUpperCase() : undefined;
           
-          marketContextData.marketNews = await fetchMarketNews(symbol);
+          marketContextData.marketNews = await fetchMarketNews(symbol ? [symbol] : undefined);
         } catch (err) {
           console.error('Error fetching market news for context:', err);
         }

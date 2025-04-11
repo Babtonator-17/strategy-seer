@@ -49,11 +49,14 @@ export interface CommodityData {
   timestamp: string;
 }
 
-// Fetch market news
-export const fetchMarketNews = async (symbol?: string, limit?: number): Promise<MarketNewsItem[]> => {
+// Fetch market news - updated to handle both string and string array
+export const fetchMarketNews = async (symbol?: string | string[], limit?: number): Promise<MarketNewsItem[]> => {
   try {
+    // If symbol is an array, take first element or undefined
+    const symbolParam = Array.isArray(symbol) ? symbol[0] : symbol;
+    
     const { data, error } = await supabase.functions.invoke('trading-apis', {
-      body: { action: 'market-news', symbol },
+      body: { action: 'market-news', symbol: symbolParam },
       method: 'POST'
     });
     
