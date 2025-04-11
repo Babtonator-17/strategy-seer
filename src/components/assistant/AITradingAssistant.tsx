@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -162,7 +161,6 @@ export const AITradingAssistant = () => {
         lowerQuery.includes('eth')
       ) {
         try {
-          // Fix: Use an array of strings instead of a comma-separated string
           marketContextData.cryptoData = await fetchCryptoMarketData(['bitcoin', 'ethereum', 'ripple', 'solana', 'cardano']);
         } catch (err) {
           console.error('Error fetching crypto data for context:', err);
@@ -226,7 +224,6 @@ export const AITradingAssistant = () => {
       
       setMessages(prev => [...prev, assistantMessage]);
       
-      // Update suggested commands based on the response
       const updatedCommands = updateCommandsHelper(suggestedCommands, data.response);
       setSuggestedCommands(updatedCommands);
       
