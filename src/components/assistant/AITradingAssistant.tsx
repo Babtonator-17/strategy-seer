@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -161,6 +162,7 @@ export const AITradingAssistant = () => {
         lowerQuery.includes('eth')
       ) {
         try {
+          // Make sure to pass an array of strings here
           marketContextData.cryptoData = await fetchCryptoMarketData(['bitcoin', 'ethereum', 'ripple', 'solana', 'cardano']);
         } catch (err) {
           console.error('Error fetching crypto data for context:', err);
@@ -192,6 +194,7 @@ export const AITradingAssistant = () => {
           const symbolMatch = lowerQuery.match(/\b(btc|eth|xrp|ada|btcusd|ethusd|eurusd|gbpusd|usdjpy|gold|xauusd)\b/i);
           const symbol = symbolMatch ? symbolMatch[0].toUpperCase() : undefined;
           
+          // Pass an array for the symbol parameter
           marketContextData.marketNews = await fetchMarketNews(symbol ? [symbol] : undefined);
         } catch (err) {
           console.error('Error fetching market news for context:', err);
