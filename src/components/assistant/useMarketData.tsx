@@ -29,7 +29,7 @@ export const useMarketData = (
     setIsLoadingMarketData(true);
     try {
       const [cryptoData, commodityData, newsData] = await Promise.all([
-        // Using string array format which is now acceptable by fetchCryptoMarketData
+        // Using string array format for fetchCryptoMarketData
         fetchCryptoMarketData(['bitcoin', 'ethereum', 'ripple', 'solana', 'cardano']),
         fetchCommodityPrices(),
         fetchMarketNews(undefined, 5)

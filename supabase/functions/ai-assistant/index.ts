@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -30,24 +29,23 @@ For secure operation, all command executions require explicit user confirmation.
 
 const COMMAND_PATTERNS = [
   {
-    regex: /\[TRADE:(buy|sell):([\w\/]+):(\d+\.?\d*)\]/i,
+    regex: /\[TRADE:(buy|sell):([\w\/]+):(\d+\.?\d*)\]/gi,
     handler: 'executeTrade'
   },
   {
-    regex: /\[POSITION:(close|modify):([\w-]+)\]/i,
+    regex: /\[POSITION:(close|modify):([\w-]+)\]/gi,
     handler: 'managePosition'
   },
   {
-    regex: /\[ACCOUNT:(balance|margin|summary)\]/i,
+    regex: /\[ACCOUNT:(balance|margin|summary)\]/gi,
     handler: 'getAccountInfo'
   },
   {
-    regex: /\[NEWS:([\w\/]+)]/i,
+    regex: /\[NEWS:([\w\/]+)]/gi,
     handler: 'getNews'
   }
 ];
 
-// Enhanced mock broker data
 const mockBrokerData = {
   accountInfo: {
     balance: 10000,
@@ -255,7 +253,6 @@ const mockBrokerData = {
   }
 };
 
-// Extract trading commands from assistant response
 function extractCommands(response) {
   let commandsFound = [];
   
@@ -275,7 +272,6 @@ function extractCommands(response) {
   return commandsFound;
 }
 
-// Execute mock trade for demo accounts
 function executeMockTrade(action, instrument, quantity) {
   const price = mockBrokerData.marketPrices[instrument] || 100.00;
   const tradeId = `pos_${Math.random().toString(36).substring(2, 10)}`;
@@ -292,7 +288,6 @@ function executeMockTrade(action, instrument, quantity) {
   };
 }
 
-// Get news data
 function getNewsData(instrument) {
   if (instrument) {
     return mockBrokerData.marketNews.filter(news => 
@@ -302,19 +297,16 @@ function getNewsData(instrument) {
   return mockBrokerData.marketNews;
 }
 
-// Get commodity data
 function getCommodityData(commodity) {
   if (commodity && mockBrokerData.commodities[commodity]) {
     return mockBrokerData.commodities[commodity];
   }
   
-  // Return all commodities sorted by performance (change)
   return Object.entries(mockBrokerData.commodities)
     .map(([symbol, data]) => ({ symbol, ...data }))
     .sort((a, b) => b.change - a.change);
 }
 
-// Process trading commands in the assistant's response
 function processCommands(response, isDemoAccount) {
   const commands = extractCommands(response);
   let processedResponse = response;
@@ -324,7 +316,6 @@ function processCommands(response, isDemoAccount) {
     for (const cmd of commands) {
       let result = { success: false, message: 'Command not executed' };
       
-      // Only execute commands in demo mode or if we have verification
       if (isDemoAccount || cmd.type === 'getAccountInfo' || cmd.type === 'getNews') {
         switch (cmd.type) {
           case 'executeTrade':
@@ -356,7 +347,6 @@ function processCommands(response, isDemoAccount) {
         }
       }
       
-      // Replace command with result
       processedResponse = processedResponse.replace(
         cmd.fullCommand,
         `**EXECUTED: ${cmd.fullCommand}**\n${result.message}`
@@ -374,7 +364,6 @@ function processCommands(response, isDemoAccount) {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -402,14 +391,11 @@ serve(async (req) => {
       );
     }
 
-    // Generate response using enhanced prompt with market context
     let enhancedSystemPrompt = SYSTEM_PROMPT;
     
-    // Add real-time market data to the system prompt if available
     if (marketContextData) {
       enhancedSystemPrompt += "\n\nCURRENT MARKET DATA:\n";
       
-      // Add technical analysis
       if (marketContextData.technicalAnalysis) {
         const ta = marketContextData.technicalAnalysis;
         enhancedSystemPrompt += `\nTECHNICAL ANALYSIS FOR ${ta.symbol} (${ta.interval}):\n`;
@@ -420,7 +406,6 @@ serve(async (req) => {
         if (ta.ema) enhancedSystemPrompt += `- EMA: ${ta.ema}\n`;
       }
       
-      // Add crypto data
       if (marketContextData.cryptoData && marketContextData.cryptoData.length > 0) {
         enhancedSystemPrompt += "\nCRYPTO MARKET SUMMARY:\n";
         marketContextData.cryptoData.slice(0, 5).forEach(crypto => {
@@ -428,7 +413,6 @@ serve(async (req) => {
         });
       }
       
-      // Add commodity data
       if (marketContextData.commodityData && marketContextData.commodityData.length > 0) {
         enhancedSystemPrompt += "\nCOMMODITY PRICES:\n";
         marketContextData.commodityData.slice(0, 5).forEach(commodity => {
@@ -436,7 +420,6 @@ serve(async (req) => {
         });
       }
       
-      // Add market news
       if (marketContextData.marketNews && marketContextData.marketNews.length > 0) {
         enhancedSystemPrompt += "\nLATEST MARKET NEWS:\n";
         marketContextData.marketNews.slice(0, 3).forEach(news => {
@@ -445,14 +428,11 @@ serve(async (req) => {
       }
     }
     
-    // Generate response
     const mockResponse = generateMockResponse(query, Boolean(controlMode), enhancedSystemPrompt);
     
-    // Process any trading commands in the response
-    const isDemoAccount = true; // For now, all accounts are considered demo
+    const isDemoAccount = true;
     const { processedResponse, executionResults, hasCommands } = processCommands(mockResponse, isDemoAccount);
     
-    // Store the conversation in the database if user is authenticated
     let updatedConversationId = conversationId;
     const userMessage = {
       role: 'user',
@@ -467,11 +447,9 @@ serve(async (req) => {
       metadata: hasCommands ? { executionResults } : undefined
     };
     
-    // Try to get the current user session
     const { data: { session } } = await supabaseClient.auth.getSession();
     
     if (session?.user && conversationId) {
-      // Update existing conversation
       const { data: existingConversation, error: fetchError } = await supabaseClient
         .from('assistant_conversations')
         .select('messages')
@@ -480,7 +458,6 @@ serve(async (req) => {
       
       if (fetchError) {
         console.error('Error fetching conversation:', fetchError);
-        // Continue with the response even if there's a fetch error
       } else {
         const updatedMessages = [...(existingConversation?.messages || []), userMessage, assistantMessage];
         
@@ -497,7 +474,6 @@ serve(async (req) => {
         }
       }
     } else if (session?.user) {
-      // Create a new conversation
       const { data: newConversation, error: insertError } = await supabaseClient
         .from('assistant_conversations')
         .insert([{
@@ -534,16 +510,13 @@ serve(async (req) => {
   }
 });
 
-// Enhanced function to generate responses with trading capabilities and current info
 function generateMockResponse(query: string, controlMode: boolean, systemPrompt: string): string {
   const lowerQuery = query.toLowerCase();
   
-  // Check if this is a trade execution request when control mode is on
   if (controlMode && (lowerQuery.includes('buy') || lowerQuery.includes('sell'))) {
     const instruments = Object.keys(mockBrokerData.marketPrices);
-    let instrument = 'BTCUSD'; // Default
+    let instrument = 'BTCUSD';
     
-    // Try to determine instrument from query
     for (const i of instruments) {
       if (lowerQuery.includes(i.toLowerCase())) {
         instrument = i;
@@ -551,11 +524,9 @@ function generateMockResponse(query: string, controlMode: boolean, systemPrompt:
       }
     }
     
-    // Try to determine volume/quantity
     const volumeMatch = lowerQuery.match(/(\d+\.?\d*)\s*(lot|bitcoin|btc|eth|euro|dollar|eur|usd)/i);
     const volume = volumeMatch ? parseFloat(volumeMatch[1]) : 0.1;
     
-    // Determine if buy or sell
     const action = lowerQuery.includes('sell') ? 'sell' : 'buy';
     
     return `I'll execute a ${action} order for ${volume} ${instrument} at the current market price of $${mockBrokerData.marketPrices[instrument]}. 
@@ -565,7 +536,6 @@ function generateMockResponse(query: string, controlMode: boolean, systemPrompt:
 Would you like me to set a stop loss or take profit for this trade?`;
   }
   
-  // Handle account information requests
   if (lowerQuery.includes('account') && (lowerQuery.includes('balance') || lowerQuery.includes('summary'))) {
     return `Here's your account information:
 
@@ -588,7 +558,6 @@ Would you like to modify or close any of these positions?`;
   if (lowerQuery.includes('news') || lowerQuery.includes('latest') || lowerQuery.includes('recent updates')) {
     let newsResponse = "Here's the latest market news:\n\n";
     
-    // Use mock data for news
     const newsData = mockBrokerData.marketNews;
     
     newsData.forEach((news, idx) => {
@@ -681,11 +650,9 @@ Would you like to modify or close any of these positions?`;
 Remember to enable Control Mode if you want me to execute actual trading commands.`;
   }
   
-  // Generic response for any other query
   return "I'm your AI trading assistant with access to real-time market data. I can help you with trading strategies, broker connections, market analysis, platform navigation, and even execute trades for you when Control Mode is enabled. Feel free to ask me specific questions about any of these topics, or simply tell me what you're trying to achieve with your trading today.";
 }
 
-// Helper function to format timestamps
 function formatTimestamp(timestamp: string): string {
   try {
     const date = new Date(timestamp);

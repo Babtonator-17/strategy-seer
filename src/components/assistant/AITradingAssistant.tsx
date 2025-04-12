@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -253,19 +252,6 @@ export const AITradingAssistant = () => {
     }
   };
   
-  const retryLastMessage = () => {
-    if (messages.length < 2) return;
-    
-    const lastUserMessageIndex = [...messages].reverse().findIndex(m => m.role === 'user');
-    if (lastUserMessageIndex === -1) return;
-    
-    const actualIndex = messages.length - 1 - lastUserMessageIndex;
-    const lastUserMessage = messages[actualIndex];
-    
-    setQuery(lastUserMessage.content);
-    setMessages(messages.slice(0, actualIndex));
-  };
-  
   const handleCommandClick = (command: string) => {
     setQuery(command);
     
@@ -279,6 +265,19 @@ export const AITradingAssistant = () => {
     }, 50);
   };
 
+  const retryLastMessage = () => {
+    if (messages.length < 2) return;
+    
+    const lastUserMessageIndex = [...messages].reverse().findIndex(m => m.role === 'user');
+    if (lastUserMessageIndex === -1) return;
+    
+    const actualIndex = messages.length - 1 - lastUserMessageIndex;
+    const lastUserMessage = messages[actualIndex];
+    
+    setQuery(lastUserMessage.content);
+    setMessages(messages.slice(0, actualIndex));
+  };
+  
   const handleTradeExecution = (confirmed: boolean) => {
     if (confirmed && confirmTrade.command) {
       toast({
@@ -302,20 +301,6 @@ export const AITradingAssistant = () => {
     setConfirmTrade({ show: false, command: null });
   };
   
-  const handleRefreshMarketData = async () => {
-    toast({
-      title: "Refreshing market data",
-      description: "Fetching the latest market information...",
-    });
-    
-    await refreshMarketData();
-    
-    toast({
-      title: "Market data updated",
-      description: "Latest market information is now available",
-    });
-  };
-  
   const handleTryWithoutLogin = () => {
     setMessages([welcomeMessage]);
   };
@@ -335,7 +320,7 @@ export const AITradingAssistant = () => {
               size="sm" 
               variant="outline" 
               className="h-8" 
-              onClick={handleRefreshMarketData}
+              onClick={refreshMarketData}
               disabled={isLoadingMarketData}
             >
               <RefreshCw className={`h-4 w-4 ${isLoadingMarketData ? 'animate-spin' : ''}`} />

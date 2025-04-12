@@ -148,7 +148,14 @@ async function fetchTechnicalAnalysis(symbol: string, interval: string = 'daily'
 // Mock implementation of crypto market API
 // Updated to handle both string and array input for coins
 async function fetchCryptoMarket(coins?: string | string[]) {
-  console.log(`Fetching crypto market data for coins: ${coins || 'top'}`);
+  // Normalize input to a string or undefined
+  const coinsString = typeof coins === 'string' 
+    ? coins 
+    : Array.isArray(coins) 
+      ? coins.join(',') 
+      : undefined;
+      
+  console.log(`Fetching crypto market data for coins: ${coinsString || 'top'}`);
   
   const mockCryptoData = [
     {
@@ -208,9 +215,9 @@ async function fetchCryptoMarket(coins?: string | string[]) {
     }
   ];
   
-  if (coins) {
+  if (coinsString) {
     // Handle both string and array formats
-    const coinList = typeof coins === 'string' ? coins.toLowerCase().split(',') : coins.map(c => c.toLowerCase());
+    const coinList = coinsString.toLowerCase().split(',');
     return mockCryptoData.filter(crypto => 
       coinList.includes(crypto.id) || coinList.includes(crypto.symbol.toLowerCase())
     );
