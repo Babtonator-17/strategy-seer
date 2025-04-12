@@ -104,8 +104,8 @@ const Assistant = () => {
             <div>
               <h3 className="font-medium mb-1">How to use the AI Assistant</h3>
               <p className="text-sm text-muted-foreground">
-                The assistant can answer questions, execute trades with Control Mode enabled, provide market analysis, 
-                and help manage your account. Use voice commands for hands-free operation.
+                The assistant can answer questions on any topic (like ChatGPT), while specializing in trading, market analysis, and financial insights. 
+                When Control Mode is enabled, it can execute trades for you. Use voice commands for hands-free operation.
               </p>
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                 <Button 
@@ -115,16 +115,18 @@ const Assistant = () => {
                   onClick={() => {
                     const inputField = document.getElementById('query-input') as HTMLInputElement;
                     if (inputField) {
-                      inputField.value = "Buy 0.1 BTCUSD at market price";
+                      inputField.value = "Analyze Bitcoin price trend";
                       inputField.focus();
                       
                       // Dispatch an input event to trigger React state changes
                       const event = new Event('input', { bubbles: true });
                       inputField.dispatchEvent(event);
+                      
+                      console.log("Command clicked: Analyze BTC price trend");
                     }
                   }}
                 >
-                  "Buy 0.1 BTCUSD at market price"
+                  "Analyze Bitcoin price trend"
                 </Button>
                 <Button 
                   variant="outline" 
@@ -133,16 +135,18 @@ const Assistant = () => {
                   onClick={() => {
                     const inputField = document.getElementById('query-input') as HTMLInputElement;
                     if (inputField) {
-                      inputField.value = "Show my account balance and open positions";
+                      inputField.value = "Show my account balance and positions";
                       inputField.focus();
                       
                       // Dispatch an input event to trigger React state changes
                       const event = new Event('input', { bubbles: true });
                       inputField.dispatchEvent(event);
+                      
+                      console.log("Command clicked: Show account balance");
                     }
                   }}
                 >
-                  "Show my account balance and open positions"
+                  "Show my account balance and positions"
                 </Button>
                 <Button 
                   variant="outline" 
@@ -151,16 +155,18 @@ const Assistant = () => {
                   onClick={() => {
                     const inputField = document.getElementById('query-input') as HTMLInputElement;
                     if (inputField) {
-                      inputField.value = "Analyze EURUSD on the 4-hour chart";
+                      inputField.value = "Explain the RSI indicator";
                       inputField.focus();
                       
                       // Dispatch an input event to trigger React state changes
                       const event = new Event('input', { bubbles: true });
                       inputField.dispatchEvent(event);
+                      
+                      console.log("Command clicked: Explain RSI");
                     }
                   }}
                 >
-                  "Analyze EURUSD on the 4-hour chart"
+                  "Explain the RSI indicator"
                 </Button>
               </div>
             </div>

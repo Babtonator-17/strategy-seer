@@ -111,7 +111,7 @@ const MarketDataDisplay: React.FC<MarketDataDisplayProps> = ({
       </div>
       
       {!collapsed && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {marketData.crypto && marketData.crypto.length > 0 && (
             <div>
               <span className="text-muted-foreground">BTC:</span> ${marketData.crypto[0].current_price.toLocaleString()}
