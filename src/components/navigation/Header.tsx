@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Bell, ChevronDown, Menu, UserCircle, LogOut } from 'lucide-react';
+import { ChevronDown, Menu, UserCircle, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/providers/AuthProvider';
 import { Link, useNavigate } from 'react-router-dom';
+import Notifications from './Notifications';
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -56,10 +57,7 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-1 right-1 flex h-2 w-2 rounded-full bg-primary"></span>
-        </Button>
+        <Notifications />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

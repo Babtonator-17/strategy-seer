@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   fetchMarketNews, 
   fetchTechnicalAnalysis, 
@@ -20,12 +20,14 @@ interface UseMarketDataResult {
 }
 
 export const useMarketData = (
-  setSuggestedCommands: React.Dispatch<React.SetStateAction<CommandButton[]>>
+  setSuggestedCommands: React.Dispatch<React.SetStateAction<CommandButton[]>>,
+  autoRefreshInterval = 60000 // Default to 1 minute refresh
 ): UseMarketDataResult => {
   const [marketData, setMarketData] = useState<any>(null);
   const [isLoadingMarketData, setIsLoadingMarketData] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
 
-  const fetchInitialMarketData = async () => {
+  const fetchMarketData = useCallback(async () => {
     setIsLoadingMarketData(true);
     try {
       const [cryptoData, commodityData, newsData] = await Promise.all([
@@ -76,16 +78,32 @@ export const useMarketData = (
           return [...originalCommands, ...newCommands.slice(0, 4)];
         });
       }
+      
+      setLastRefreshTime(Date.now());
     } catch (error) {
-      console.error('Error fetching initial market data:', error);
+      console.error('Error fetching market data:', error);
     } finally {
       setIsLoadingMarketData(false);
     }
-  };
+  }, [setSuggestedCommands]);
 
+  // Initial data fetch
   useEffect(() => {
-    fetchInitialMarketData();
-  }, []);
+    fetchMarketData();
+  }, [fetchMarketData]);
+
+  // Auto-refresh on interval
+  useEffect(() => {
+    // Skip the first automatic refresh since we already loaded data once
+    if (lastRefreshTime === 0) return;
+    
+    const intervalId = setInterval(() => {
+      console.log('Auto-refreshing market data...');
+      fetchMarketData();
+    }, autoRefreshInterval);
+    
+    return () => clearInterval(intervalId);
+  }, [fetchMarketData, autoRefreshInterval, lastRefreshTime]);
 
   const updateSuggestedCommands = (commands: CommandButton[], response: string): CommandButton[] => {
     const lowerResponse = response.toLowerCase();
@@ -141,7 +159,7 @@ export const useMarketData = (
   return {
     marketData,
     isLoadingMarketData,
-    refreshMarketData: fetchInitialMarketData,
+    refreshMarketData: fetchMarketData,
     updateSuggestedCommands
   };
 };

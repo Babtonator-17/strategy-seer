@@ -1,6 +1,7 @@
 
 import React from 'react';
-import { BarChart4 } from 'lucide-react';
+import { BarChart4, RefreshCw } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
 interface CryptoMarketData {
   id: string;
@@ -39,16 +40,50 @@ interface MarketDataDisplayProps {
     news?: MarketNewsItem[];
   } | null;
   isLoading: boolean;
+  onRefresh?: () => void;
 }
 
-const MarketDataDisplay: React.FC<MarketDataDisplayProps> = ({ marketData, isLoading }) => {
-  if (!marketData || isLoading) return null;
+const MarketDataDisplay: React.FC<MarketDataDisplayProps> = ({ marketData, isLoading, onRefresh }) => {
+  if (!marketData) {
+    return isLoading ? (
+      <div className="bg-muted p-2 rounded-md mb-3 text-xs">
+        <div className="flex items-center gap-2">
+          <RefreshCw className="h-4 w-4 animate-spin" />
+          <span>Loading market data...</span>
+        </div>
+      </div>
+    ) : null;
+  }
+  
+  // Get the most recent timestamp for display
+  const getLatestUpdate = () => {
+    const timestamps = [
+      marketData.commodities?.[0]?.timestamp,
+      marketData.news?.[0]?.timestamp,
+    ].filter(Boolean);
+    
+    if (timestamps.length === 0) return null;
+    
+    const latestTimestamp = new Date(Math.max(...timestamps.map(t => new Date(t as string).getTime())));
+    return formatDistanceToNow(latestTimestamp, { addSuffix: true });
+  };
+  
+  const latestUpdate = getLatestUpdate();
   
   return (
     <div className="bg-muted p-2 rounded-md mb-3 text-xs">
-      <div className="flex items-center gap-2 mb-1">
-        <BarChart4 className="h-4 w-4 text-primary" />
-        <span className="font-medium">Market Data</span>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <BarChart4 className="h-4 w-4 text-primary" />
+          <span className="font-medium">Market Data</span>
+        </div>
+        {isLoading ? (
+          <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />
+        ) : (
+          latestUpdate && (
+            <span className="text-muted-foreground text-[10px]">Updated {latestUpdate}</span>
+          )
+        )}
       </div>
       <div className="grid grid-cols-3 gap-2">
         {marketData.crypto && marketData.crypto.length > 0 && (

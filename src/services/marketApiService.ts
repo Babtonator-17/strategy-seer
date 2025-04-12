@@ -1,10 +1,15 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
+// Data caching configuration
+const CACHE_DURATION = 30 * 1000; // 30 seconds
+const dataCache: Record<string, { data: any; timestamp: number }> = {};
+
 // Interface for technical analysis data
 export interface TechnicalAnalysisData {
   symbol: string;
   interval: string;
+  price?: number;
   sma: number | null;
   ema: number | null;
   rsi: number | null;
@@ -50,8 +55,24 @@ export interface CommodityData {
   timestamp: string;
 }
 
+// Utility function to check if data cache is valid
+const isCacheValid = (cacheKey: string): boolean => {
+  if (!dataCache[cacheKey]) return false;
+  
+  const now = Date.now();
+  const { timestamp } = dataCache[cacheKey];
+  
+  return now - timestamp < CACHE_DURATION;
+};
+
 // Fetch market news - accepts both string and string[] types
 export const fetchMarketNews = async (symbol?: string | string[], limit?: number): Promise<MarketNewsItem[]> => {
+  const cacheKey = `news_${symbol ? (Array.isArray(symbol) ? symbol.join(',') : symbol) : 'all'}_${limit || 'all'}`;
+  
+  if (isCacheValid(cacheKey)) {
+    return dataCache[cacheKey].data;
+  }
+  
   try {
     // If symbol is an array, take first element or undefined
     const symbolParam = Array.isArray(symbol) ? symbol[0] : symbol;
@@ -64,11 +85,12 @@ export const fetchMarketNews = async (symbol?: string | string[], limit?: number
     if (error) throw new Error(error.message);
     
     // Apply limit if provided
-    if (limit && data.length > limit) {
-      return data.slice(0, limit);
-    }
+    const result = limit && data.length > limit ? data.slice(0, limit) : data;
     
-    return data;
+    // Cache the result
+    dataCache[cacheKey] = { data: result, timestamp: Date.now() };
+    
+    return result;
   } catch (error) {
     console.error('Error fetching market news:', error);
     return [];
@@ -77,6 +99,12 @@ export const fetchMarketNews = async (symbol?: string | string[], limit?: number
 
 // Fetch technical analysis for a symbol
 export const fetchTechnicalAnalysis = async (symbol: string, interval: string = 'daily'): Promise<TechnicalAnalysisData | null> => {
+  const cacheKey = `ta_${symbol}_${interval}`;
+  
+  if (isCacheValid(cacheKey)) {
+    return dataCache[cacheKey].data;
+  }
+  
   try {
     const { data, error } = await supabase.functions.invoke('trading-apis', {
       body: { action: 'technical-analysis', symbol, interval },
@@ -84,6 +112,10 @@ export const fetchTechnicalAnalysis = async (symbol: string, interval: string = 
     });
     
     if (error) throw new Error(error.message);
+    
+    // Cache the result
+    dataCache[cacheKey] = { data, timestamp: Date.now() };
+    
     return data;
   } catch (error) {
     console.error(`Error fetching technical analysis for ${symbol}:`, error);
@@ -93,12 +125,15 @@ export const fetchTechnicalAnalysis = async (symbol: string, interval: string = 
 
 // Fetch crypto market data - accepts both string and string[] types
 export const fetchCryptoMarketData = async (coins?: string | string[]): Promise<CryptoMarketData[]> => {
+  const cacheKey = `crypto_${coins ? (Array.isArray(coins) ? coins.join(',') : coins) : 'all'}`;
+  
+  if (isCacheValid(cacheKey)) {
+    return dataCache[cacheKey].data;
+  }
+  
   try {
     // Convert string array to comma-separated format if it's an array
     let coinsParam = coins;
-    if (Array.isArray(coins)) {
-      coinsParam = coins.join(',');
-    }
     
     const { data, error } = await supabase.functions.invoke('trading-apis', {
       body: { action: 'crypto-market', coins: coinsParam },
@@ -106,6 +141,10 @@ export const fetchCryptoMarketData = async (coins?: string | string[]): Promise<
     });
     
     if (error) throw new Error(error.message);
+    
+    // Cache the result
+    dataCache[cacheKey] = { data, timestamp: Date.now() };
+    
     return data;
   } catch (error) {
     console.error('Error fetching crypto market data:', error);
@@ -115,6 +154,12 @@ export const fetchCryptoMarketData = async (coins?: string | string[]): Promise<
 
 // Fetch commodity prices
 export const fetchCommodityPrices = async (): Promise<CommodityData[]> => {
+  const cacheKey = 'commodities';
+  
+  if (isCacheValid(cacheKey)) {
+    return dataCache[cacheKey].data;
+  }
+  
   try {
     const { data, error } = await supabase.functions.invoke('trading-apis', {
       body: { action: 'commodity-prices' },
@@ -122,6 +167,10 @@ export const fetchCommodityPrices = async (): Promise<CommodityData[]> => {
     });
     
     if (error) throw new Error(error.message);
+    
+    // Cache the result
+    dataCache[cacheKey] = { data, timestamp: Date.now() };
+    
     return data;
   } catch (error) {
     console.error('Error fetching commodity prices:', error);
@@ -131,6 +180,12 @@ export const fetchCommodityPrices = async (): Promise<CommodityData[]> => {
 
 // Fetch stock quote
 export const fetchStockQuote = async (symbol: string) => {
+  const cacheKey = `stock_${symbol}`;
+  
+  if (isCacheValid(cacheKey)) {
+    return dataCache[cacheKey].data;
+  }
+  
   try {
     const { data, error } = await supabase.functions.invoke('trading-apis', {
       body: { action: 'stock-quote', symbol },
@@ -138,6 +193,10 @@ export const fetchStockQuote = async (symbol: string) => {
     });
     
     if (error) throw new Error(error.message);
+    
+    // Cache the result
+    dataCache[cacheKey] = { data, timestamp: Date.now() };
+    
     return data;
   } catch (error) {
     console.error(`Error fetching stock quote for ${symbol}:`, error);
@@ -147,6 +206,12 @@ export const fetchStockQuote = async (symbol: string) => {
 
 // Fetch batch quotes for multiple symbols
 export const fetchBatchQuotes = async (symbols: string[]) => {
+  const cacheKey = `batch_${symbols.join(',')}`;
+  
+  if (isCacheValid(cacheKey)) {
+    return dataCache[cacheKey].data;
+  }
+  
   try {
     const { data, error } = await supabase.functions.invoke('trading-apis', {
       body: { action: 'batch-quotes', symbols },
@@ -154,6 +219,10 @@ export const fetchBatchQuotes = async (symbols: string[]) => {
     });
     
     if (error) throw new Error(error.message);
+    
+    // Cache the result
+    dataCache[cacheKey] = { data, timestamp: Date.now() };
+    
     return data;
   } catch (error) {
     console.error('Error fetching batch quotes:', error);
@@ -163,6 +232,12 @@ export const fetchBatchQuotes = async (symbols: string[]) => {
 
 // Fetch Twitter sentiment for a query
 export const fetchTwitterSentiment = async (query: string) => {
+  const cacheKey = `twitter_${query}`;
+  
+  if (isCacheValid(cacheKey)) {
+    return dataCache[cacheKey].data;
+  }
+  
   try {
     const { data, error } = await supabase.functions.invoke('trading-apis', {
       body: { action: 'twitter-sentiment', query },
@@ -170,9 +245,20 @@ export const fetchTwitterSentiment = async (query: string) => {
     });
     
     if (error) throw new Error(error.message);
+    
+    // Cache the result
+    dataCache[cacheKey] = { data, timestamp: Date.now() };
+    
     return data;
   } catch (error) {
     console.error(`Error fetching Twitter sentiment for "${query}":`, error);
     return null;
   }
+};
+
+// Clear all data cache
+export const clearMarketDataCache = () => {
+  Object.keys(dataCache).forEach(key => {
+    delete dataCache[key];
+  });
 };
