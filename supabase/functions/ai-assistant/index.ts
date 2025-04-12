@@ -7,22 +7,23 @@ const corsHeaders = {
 };
 
 const SYSTEM_PROMPT = `
-You are a helpful AI trading assistant. You help users with:
+You are an advanced AI trading assistant with extensive knowledge of finance, economics, and market analysis. You can help users with:
 
-1. GENERAL Q&A: Answer general questions related to trading and account management with clear and concise information.
+1. GENERAL Q&A: Answer ANY question the user asks, whether related to finance or not. You should provide thoughtful, nuanced answers that show deep understanding. If the question isn't finance-related, you can still answer it like a general-purpose AI, but you should always highlight your trading expertise when relevant.
 
-2. TRADING EXECUTION: Execute trades, strategies, and commands based on user instructions. Format trade execution commands as [TRADE:operation:instrument:quantity] for system recognition.
+2. TRADING ANALYSIS: Provide sophisticated market analysis with strong technical understanding of trading concepts, patterns, indicators, and strategies. You can analyze market conditions, identify trends, and suggest possible trading setups.
 
-3. SYSTEM ACCESS: Access the trading system to perform tasks as instructed. For buying, use [TRADE:buy:symbol:amount], for selling use [TRADE:sell:symbol:amount], for managing positions use [POSITION:action:id].
+3. TRADING EXECUTION: Execute trades, strategies, and commands based on user instructions when Control Mode is enabled. Format trade execution commands as [TRADE:operation:instrument:quantity] for system recognition.
 
-4. MARKET ANALYSIS: Provide insights on market conditions, trends, technical indicators, and potential trading opportunities based on available data.
+4. MARKET INSIGHTS: Offer insights on market conditions, economic indicators, geopolitical factors, and how they might impact various financial instruments. Be data-driven and nuanced in your analysis.
 
 5. ACCOUNT MANAGEMENT: Retrieve and explain account information, including balance, margin, open positions, and trading history.
 
-6. NEWS: Stay updated on the latest market news and events that could impact trading decisions.
+6. LEARNING RESOURCES: Provide educational content on trading concepts, risk management, technical analysis, and financial markets.
 
-Be concise, clear, and helpful. If you don't know something, be honest and suggest alternatives.
-Avoid giving specific investment advice that could be construed as financial recommendations.
+Be conversational, insightful, and helpful. If you don't know something, be honest and suggest alternatives or explain how the user could find that information.
+
+Remember: You're a financial assistant first, but you can help with ANY topic a user might ask about. You're like ChatGPT with specialized trading knowledge and capabilities.
 
 For secure operation, all command executions require explicit user confirmation.
 `;
@@ -650,7 +651,35 @@ Would you like to modify or close any of these positions?`;
 Remember to enable Control Mode if you want me to execute actual trading commands.`;
   }
   
-  return "I'm your AI trading assistant with access to real-time market data. I can help you with trading strategies, broker connections, market analysis, platform navigation, and even execute trades for you when Control Mode is enabled. Feel free to ask me specific questions about any of these topics, or simply tell me what you're trying to achieve with your trading today.";
+  if (lowerQuery.includes('who are you') || lowerQuery.includes('what can you do')) {
+    return "I'm an advanced AI trading assistant that can help with financial questions, market analysis, and execute trades. Unlike simpler assistants, I can answer questions on virtually any topic while specializing in finance and trading. Think of me as ChatGPT with additional trading capabilities! I can process complex queries, provide nuanced analysis, and help automate trading tasks when Control Mode is enabled. What would you like to discuss or analyze today?";
+  }
+  
+  if (lowerQuery.includes('meaning of life') || lowerQuery.includes('purpose of life')) {
+    return "That's a profound philosophical question! The meaning of life is something humans have contemplated throughout history. Different philosophies and religions offer various perspectives - from finding purpose in relationships, personal growth, contributing to society, or spiritual fulfillment. From a trading perspective, many find meaning in financial independence and the freedom it provides to pursue other interests. What do you find meaningful in your life? And how does your approach to trading and investment fit into your broader life goals?";
+  }
+  
+  if (lowerQuery.includes('tell me a joke') || lowerQuery.includes('joke')) {
+    return "Here's a finance-related joke for you: Why don't traders ever get lost? Because they're always following the charts! 😄 \n\nWould you like another one, or should we get back to more serious market discussions?";
+  }
+  
+  if (lowerQuery.includes('weather')) {
+    return "I don't have access to real-time weather data or your location, but weather conditions can certainly impact markets! Energy commodities like natural gas and heating oil are directly affected by weather patterns. Agricultural futures respond to drought or rainfall forecasts. Even retail stocks can be influenced by seasonal weather trends affecting consumer behavior. If you're interested, I can analyze specific weather-market correlations, or you can check a weather service for your local forecast. Is there a specific market-weather relationship you'd like to explore?";
+  }
+  
+  if (lowerQuery.includes('history') || lowerQuery.includes('historical')) {
+    if (lowerQuery.includes('market') || lowerQuery.includes('crash') || lowerQuery.includes('bubble')) {
+      return "Financial markets have experienced several significant historical events. The 1929 Wall Street Crash led to the Great Depression. The 1987 Black Monday saw markets drop over 20% in a single day. The 2000 Dot-com bubble burst after excessive speculation in internet companies. The 2008 Financial Crisis stemmed from the housing market collapse and subprime mortgage issues. Most recently, the 2020 COVID-19 crash saw rapid declines followed by a remarkable recovery. These historical events provide valuable lessons about market psychology, systemic risk, and the importance of diversification. Would you like me to elaborate on any specific market crash or historical period?";
+    } else {
+      return "History is a vast subject! While I specialize in financial markets, I can discuss various historical topics. Historical knowledge can provide valuable context for understanding current market trends and economic cycles. Is there a specific historical period or event you're curious about? Or perhaps you're interested in the historical performance of a particular market or asset class?";
+    }
+  }
+  
+  return `Thank you for your question about "${query}". As an advanced AI trading assistant, I can address both financial and general knowledge questions.
+
+This appears to be a general query rather than a specific trading request. I'm designed to provide thoughtful, nuanced responses on virtually any topic, similar to ChatGPT, while maintaining my specialized knowledge in finance and trading.
+
+To give you a more specific and helpful response, could you provide additional details about what you'd like to know? I'm happy to explore this topic in greater depth or pivot to discussing market analysis, trading strategies, or portfolio management if you prefer.`;
 }
 
 function formatTimestamp(timestamp: string): string {

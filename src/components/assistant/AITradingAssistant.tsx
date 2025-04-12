@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,8 @@ export const AITradingAssistant = () => {
     show: false, 
     command: null 
   });
+  const [marketDataCollapsed, setMarketDataCollapsed] = useState(false);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const [suggestedCommands, setSuggestedCommands] = useState<CommandButton[]>([
     { text: "Account Balance", command: "What's my account balance?" },
     { text: "Open Positions", command: "Show my open positions" },
@@ -65,7 +68,7 @@ export const AITradingAssistant = () => {
   
   const welcomeMessage: Message = {
     role: 'assistant',
-    content: 'Hello! I\'m your AI trading assistant. I can help you with trading strategies, broker connections, market analysis, and even execute trades when Control Mode is enabled. How can I assist you today?',
+    content: "Hello! I'm your advanced AI trading assistant. I can answer questions on virtually any topic, similar to ChatGPT, while specializing in trading strategies, market analysis, and financial insights. When Control Mode is enabled, I can even execute trades for you. What would you like to know about today?",
     timestamp: new Date().toISOString()
   };
   
@@ -112,6 +115,24 @@ export const AITradingAssistant = () => {
     
     fetchConversation();
   }, [user]);
+  
+  // Auto-refresh market data
+  useEffect(() => {
+    let refreshInterval: number | null = null;
+    
+    if (autoRefreshEnabled && !isLoadingMarketData) {
+      refreshInterval = window.setInterval(() => {
+        console.log('Auto-refreshing market data...');
+        refreshMarketData();
+      }, 30000); // 30 seconds
+    }
+    
+    return () => {
+      if (refreshInterval !== null) {
+        clearInterval(refreshInterval);
+      }
+    };
+  }, [autoRefreshEnabled, isLoadingMarketData, refreshMarketData]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,6 +216,16 @@ export const AITradingAssistant = () => {
           marketContextData.marketNews = await fetchMarketNews(symbol ? [symbol] : undefined);
         } catch (err) {
           console.error('Error fetching market news for context:', err);
+        }
+      }
+      
+      // Always include some basic market data for context
+      if (Object.keys(marketContextData).length === 0) {
+        try {
+          marketContextData.cryptoData = await fetchCryptoMarketData(['bitcoin', 'ethereum']);
+          marketContextData.marketNews = await fetchMarketNews(undefined, 2);
+        } catch (err) {
+          console.error('Error fetching baseline market data for context:', err);
         }
       }
       
@@ -308,9 +339,9 @@ export const AITradingAssistant = () => {
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle>AI Trading Assistant</CardTitle>
+            <CardTitle>Advanced AI Assistant</CardTitle>
             <CardDescription>
-              Ask questions about trading strategies, brokers, or get help with the platform
+              Ask me anything about trading, markets, or any topic you're interested in
             </CardDescription>
           </div>
           <div className="flex gap-2 items-center">
@@ -318,11 +349,11 @@ export const AITradingAssistant = () => {
               size="sm" 
               variant="outline" 
               className="h-8" 
-              onClick={refreshMarketData}
-              disabled={isLoadingMarketData}
+              onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+              title={autoRefreshEnabled ? "Disable auto-refresh" : "Enable auto-refresh"}
             >
-              <RefreshCw className={`h-4 w-4 ${isLoadingMarketData ? 'animate-spin' : ''}`} />
-              <span className="ml-2 hidden sm:inline">Refresh Data</span>
+              <RefreshCw className={`h-4 w-4 ${isLoadingMarketData ? 'animate-spin' : ''} ${autoRefreshEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
+              <span className="ml-2 hidden sm:inline">{autoRefreshEnabled ? "Auto" : "Manual"}</span>
             </Button>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[180px]">
               <TabsList className="grid grid-cols-2">
@@ -344,6 +375,8 @@ export const AITradingAssistant = () => {
                 marketData={marketData} 
                 isLoading={isLoadingMarketData} 
                 onRefresh={refreshMarketData}
+                collapsed={marketDataCollapsed}
+                toggleCollapsed={() => setMarketDataCollapsed(!marketDataCollapsed)}
               />
               
               <SuggestedCommands 
@@ -363,6 +396,8 @@ export const AITradingAssistant = () => {
             <AssistantSettings 
               controlMode={controlMode}
               onControlModeChange={setControlMode}
+              autoRefresh={autoRefreshEnabled}
+              onAutoRefreshChange={setAutoRefreshEnabled}
             />
           </TabsContent>
         </Tabs>
