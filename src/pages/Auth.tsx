@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { Loader2, ArrowRight, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -32,9 +34,21 @@ const Auth = () => {
     checkSession();
   }, [navigate]);
 
+  // Check for error message in URL (from OAuth redirect)
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const error = url.searchParams.get('error');
+    const errorDescription = url.searchParams.get('error_description');
+    
+    if (error && errorDescription) {
+      setErrorMessage(`${error}: ${errorDescription}`);
+    }
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage(null);
     
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -58,6 +72,7 @@ const Auth = () => {
         description: error.message || "Please check your credentials and try again",
         variant: "destructive",
       });
+      setErrorMessage(error.message || "Login failed. Please check your credentials and try again.");
     } finally {
       setLoading(false);
     }
@@ -66,6 +81,7 @@ const Auth = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage(null);
     
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -90,6 +106,7 @@ const Auth = () => {
         description: error.message || "Please try again with a different email",
         variant: "destructive",
       });
+      setErrorMessage(error.message || "Sign up failed. Please try again with a different email.");
     } finally {
       setLoading(false);
     }
@@ -97,11 +114,13 @@ const Auth = () => {
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
+    setErrorMessage(null);
+    
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: `${window.location.origin}/auth`,
         }
       });
       
@@ -115,7 +134,7 @@ const Auth = () => {
         description: error.message || "Unable to login with Google",
         variant: "destructive",
       });
-    } finally {
+      setErrorMessage(error.message || "Google login failed. Please try again later.");
       setGoogleLoading(false);
     }
   };
@@ -127,6 +146,15 @@ const Auth = () => {
           <CardTitle className="text-2xl">StrategySeer AI</CardTitle>
           <CardDescription>Login or create an account to continue</CardDescription>
         </CardHeader>
+        
+        {errorMessage && (
+          <div className="px-6 pb-2">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          </div>
+        )}
         
         <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as 'login' | 'signup')}>
           <TabsList className="grid grid-cols-2 w-full">
