@@ -515,7 +515,7 @@ serve(async (req) => {
   }
 });
 
-function generateSpecificResponse(query: string, controlMode: boolean, systemPrompt: string, marketContextData: any): string {
+function generateSpecificResponse(query, controlMode, systemPrompt, marketContextData) {
   const lowerQuery = query.toLowerCase();
   
   // BTC price trend analysis
@@ -913,9 +913,9 @@ Control Mode is a powerful feature that allows me to execute trades and perform 
 
 ## Command Format
 Commands are formatted as:
-- Buy/Sell: `[TRADE:buy:BTCUSD:0.1]`
-- Position Management: `[POSITION:close:position_id]`
-- Account Info: `[ACCOUNT:balance]`
+- Buy/Sell: \`[TRADE:buy:BTCUSD:0.1]\`
+- Position Management: \`[POSITION:close:position_id]\`
+- Account Info: \`[ACCOUNT:balance]\`
 
 ## Examples of Control Mode Commands
 - "Buy 0.2 EURUSD at market price"
