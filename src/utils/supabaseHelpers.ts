@@ -1,13 +1,17 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { Json } from "@/types/supabase";
 
 /**
  * Helper functions to safely interact with Supabase tables
  * Use these functions to avoid TypeScript errors when working with tables
  */
 
+// Define allowed table names as a type for type safety
+type TableName = "assistant_conversations" | "broker_connections" | "trade_history" | "users";
+
 // Type assertion helper for tables
-export function table<T = any>(tableName: string) {
+export function table<T = any>(tableName: TableName) {
   return supabase.from(tableName) as any;
 }
 
