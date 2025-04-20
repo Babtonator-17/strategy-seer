@@ -9,8 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowRight, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, ArrowRight, AlertCircle, ExternalLink } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -21,6 +21,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isProviderError, setIsProviderError] = useState(false);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -42,6 +43,11 @@ const Auth = () => {
     
     if (error && errorDescription) {
       setErrorMessage(`${error}: ${errorDescription}`);
+      
+      // Check if this is a provider not enabled error
+      if (errorDescription.includes('provider is not enabled')) {
+        setIsProviderError(true);
+      }
     }
   }, []);
 
@@ -49,6 +55,7 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
     setErrorMessage(null);
+    setIsProviderError(false);
     
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -82,6 +89,7 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
     setErrorMessage(null);
+    setIsProviderError(false);
     
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -115,6 +123,7 @@ const Auth = () => {
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     setErrorMessage(null);
+    setIsProviderError(false);
     
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -134,7 +143,15 @@ const Auth = () => {
         description: error.message || "Unable to login with Google",
         variant: "destructive",
       });
-      setErrorMessage(error.message || "Google login failed. Please try again later.");
+      
+      // Check if this is a provider not enabled error
+      if (error.message && error.message.includes('provider is not enabled')) {
+        setIsProviderError(true);
+        setErrorMessage("Google login is not enabled. The Google authentication provider needs to be configured in your Supabase project.");
+      } else {
+        setErrorMessage(error.message || "Google login failed. Please try again later.");
+      }
+      
       setGoogleLoading(false);
     }
   };
@@ -149,10 +166,27 @@ const Auth = () => {
         
         {errorMessage && (
           <div className="px-6 pb-2">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{errorMessage}</AlertDescription>
-            </Alert>
+            {isProviderError ? (
+              <Alert variant="destructive" className="text-left">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Provider Not Enabled</AlertTitle>
+                <AlertDescription>
+                  <p className="mb-2">The Google authentication provider is not enabled in your Supabase project.</p>
+                  <p className="text-sm">To enable Google authentication:</p>
+                  <ol className="list-decimal ml-5 text-sm mt-1 space-y-1">
+                    <li>Go to the Supabase Dashboard</li>
+                    <li>Select your project</li>
+                    <li>Go to Authentication &gt; Providers</li>
+                    <li>Enable and configure the Google provider</li>
+                  </ol>
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
+            )}
           </div>
         )}
         
