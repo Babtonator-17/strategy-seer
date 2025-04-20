@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowRight, AlertCircle, ExternalLink } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ const Auth = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isProviderError, setIsProviderError] = useState(false);
+  const [showProviderDialog, setShowProviderDialog] = useState(false);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -47,6 +49,7 @@ const Auth = () => {
       // Check if this is a provider not enabled error
       if (errorDescription.includes('provider is not enabled')) {
         setIsProviderError(true);
+        setShowProviderDialog(true);
       }
     }
   }, []);
@@ -138,23 +141,27 @@ const Auth = () => {
       }
       
     } catch (error: any) {
-      toast({
-        title: "Google login failed",
-        description: error.message || "Unable to login with Google",
-        variant: "destructive",
-      });
-      
       // Check if this is a provider not enabled error
       if (error.message && error.message.includes('provider is not enabled')) {
         setIsProviderError(true);
         setErrorMessage("Google login is not enabled. The Google authentication provider needs to be configured in your Supabase project.");
+        setShowProviderDialog(true);
       } else {
+        toast({
+          title: "Google login failed",
+          description: error.message || "Unable to login with Google",
+          variant: "destructive",
+        });
         setErrorMessage(error.message || "Google login failed. Please try again later.");
       }
       
       setGoogleLoading(false);
     }
   };
+
+  const closeProviderDialog = () => {
+    setShowProviderDialog(false);
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
@@ -164,29 +171,12 @@ const Auth = () => {
           <CardDescription>Login or create an account to continue</CardDescription>
         </CardHeader>
         
-        {errorMessage && (
+        {errorMessage && !isProviderError && (
           <div className="px-6 pb-2">
-            {isProviderError ? (
-              <Alert variant="destructive" className="text-left">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Provider Not Enabled</AlertTitle>
-                <AlertDescription>
-                  <p className="mb-2">The Google authentication provider is not enabled in your Supabase project.</p>
-                  <p className="text-sm">To enable Google authentication:</p>
-                  <ol className="list-decimal ml-5 text-sm mt-1 space-y-1">
-                    <li>Go to the Supabase Dashboard</li>
-                    <li>Select your project</li>
-                    <li>Go to Authentication &gt; Providers</li>
-                    <li>Enable and configure the Google provider</li>
-                  </ol>
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{errorMessage}</AlertDescription>
-              </Alert>
-            )}
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
           </div>
         )}
         
@@ -333,6 +323,41 @@ const Auth = () => {
           By continuing, you agree to our Terms of Service and Privacy Policy.
         </div>
       </Card>
+
+      {/* Provider Error Dialog */}
+      <Dialog open={showProviderDialog} onOpenChange={setShowProviderDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Google Authentication Not Enabled</DialogTitle>
+            <DialogDescription>
+              The Google authentication provider needs to be configured in your Supabase project.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm">To enable Google authentication:</p>
+            <ol className="list-decimal ml-5 text-sm space-y-2">
+              <li>Go to the Supabase Dashboard</li>
+              <li>Select your project</li>
+              <li>Go to Authentication &gt; Providers</li>
+              <li>Enable and configure the Google provider with your Google Cloud credentials</li>
+              <li>Make sure to set the correct redirect URL in both Google Cloud and Supabase</li>
+            </ol>
+            <div className="bg-muted p-3 rounded-md text-xs">
+              <p className="font-semibold mb-1">Common issues:</p>
+              <ul className="list-disc ml-4 space-y-1">
+                <li>Missing or incorrect redirect URLs</li>
+                <li>Client ID or Secret not properly configured</li>
+                <li>Google Cloud project not properly set up</li>
+              </ul>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button type="button" onClick={closeProviderDialog}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

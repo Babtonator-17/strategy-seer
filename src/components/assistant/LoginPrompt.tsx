@@ -18,12 +18,6 @@ const LoginPrompt: React.FC<LoginPromptProps> = ({ loading, onTryWithoutLogin })
     );
   }
   
-  const handleTryWithoutLogin = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation(); // Prevent event bubbling
-    onTryWithoutLogin();
-  };
-  
   return (
     <div className="w-full space-y-3">
       <div className="text-center p-3 bg-amber-900/20 border border-amber-900/30 rounded-md">
@@ -46,8 +40,8 @@ const LoginPrompt: React.FC<LoginPromptProps> = ({ loading, onTryWithoutLogin })
         </Button>
         <Button 
           variant="outline" 
-          className="flex-1" 
-          onClick={handleTryWithoutLogin}
+          className="flex-1"
+          onClick={() => onTryWithoutLogin()}
           type="button"
         >
           Try Without Login

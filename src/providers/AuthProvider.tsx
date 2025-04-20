@@ -11,6 +11,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  tryWithoutLogin: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -65,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Connect to demo broker account
   const connectToDemoAccount = async () => {
     try {
+      console.log('Connecting to demo broker account...');
       // Connect to demo broker
       const success = await connectToBroker({
         type: BrokerType.DEMO,
@@ -79,9 +81,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCurrentBrokerConnection(BrokerType.DEMO, demoConnectionId);
         
         console.log('Connected to demo broker account successfully');
+      } else {
+        console.error('Failed to connect to demo broker - success was false');
       }
     } catch (error) {
       console.error('Failed to connect to demo broker:', error);
+    }
+  };
+  
+  // Try without login function
+  const tryWithoutLogin = async () => {
+    try {
+      toast({
+        title: "Using without login",
+        description: "You're now using the platform without being logged in. Your data won't be saved.",
+      });
+      
+      // Connect to demo broker account even without login
+      await connectToDemoAccount();
+      
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Error in tryWithoutLogin:', error);
+      return Promise.reject(error);
     }
   };
 
@@ -103,6 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     loading,
     signOut,
+    tryWithoutLogin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
