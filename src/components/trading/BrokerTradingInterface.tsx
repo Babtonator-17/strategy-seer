@@ -10,8 +10,9 @@ import { useToast } from '@/hooks/use-toast';
 import { placeOrder, OrderParams, getAccountInfo } from '@/services/brokerService';
 import { AlertCircle, ArrowDown, ArrowUp, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { supabase } from '@/integrations/supabase/client';
+import { brokerConnections } from '@/utils/supabaseHelpers';
 import { BrokerConnection } from '@/types/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 interface BrokerTradingInterfaceProps {
   instrumentName?: string;
@@ -72,10 +73,7 @@ export const BrokerTradingInterface = ({
   
   const fetchActiveBrokerConnections = async () => {
     try {
-      const { data, error } = await supabase
-        .from('broker_connections')
-        .select('*')
-        .eq('is_active', true);
+      const { data, error } = await brokerConnections.getActive();
         
       if (error) throw error;
       

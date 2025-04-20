@@ -1,5 +1,5 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { tradeHistory } from "@/utils/supabaseHelpers";
 import { TradeHistory } from "@/types/supabase";
 
 /**
@@ -33,22 +33,10 @@ export const getTradeHistory = async (
     
     if (sessionData.session) {
       // Start building the query
-      let query = supabase
-        .from('trade_history')
-        .select('*')
-        .eq('status', 'closed');
+      const startIsoDate = startDate ? startDate.toISOString() : undefined;
+      const endIsoDate = endDate ? endDate.toISOString() : undefined;
       
-      // Add date filters if provided
-      if (startDate) {
-        query = query.gte('open_time', startDate.toISOString());
-      }
-      
-      if (endDate) {
-        query = query.lte('open_time', endDate.toISOString());
-      }
-      
-      // Execute the query
-      const { data: trades, error } = await query.order('close_time', { ascending: false });
+      const { data: trades, error } = await tradeHistory.getClosedTrades(startIsoDate, endIsoDate);
       
       if (!error && trades && trades.length > 0) {
         // Transform the database records to the expected format
@@ -101,3 +89,5 @@ export const getTradeHistory = async (
     },
   ];
 };
+
+import { supabase } from "@/integrations/supabase/client";

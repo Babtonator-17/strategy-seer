@@ -1,9 +1,9 @@
-
-import { supabase } from "@/integrations/supabase/client";
+import { tradeHistory } from "@/utils/supabaseHelpers";
 import { TradeHistory } from "@/types/supabase";
 import { ModifyPositionParams, Position } from "./types";
 import { getCurrentBroker } from "./connectionManager";
 import { getMarketPrice } from "./marketData";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Close an open position
@@ -20,11 +20,7 @@ export const closePosition = async (positionId: string): Promise<boolean> => {
     
     if (sessionData.session) {
       // Fetch the position details
-      const { data: position } = await supabase
-        .from('trade_history')
-        .select('*')
-        .eq('id', positionId)
-        .single();
+      const { data: position } = await tradeHistory.getById(positionId);
       
       if (position) {
         const tradePosition = position as TradeHistory;
@@ -39,15 +35,10 @@ export const closePosition = async (positionId: string): Promise<boolean> => {
           : (tradePosition.open_price - closingPrice) * tradePosition.volume;
         
         // Update the position as closed
-        await supabase
-          .from('trade_history')
-          .update({
-            status: 'closed',
-            close_price: closingPrice,
-            close_time: new Date().toISOString(),
-            profit_loss: profitLoss
-          })
-          .eq('id', positionId);
+        await tradeHistory.closePosition(positionId, {
+          close_price: closingPrice,
+          profit_loss: profitLoss
+        });
       }
     }
   } catch (error) {
@@ -75,11 +66,7 @@ export const modifyPosition = async (
     
     if (sessionData.session) {
       // Get the current metadata
-      const { data: position } = await supabase
-        .from('trade_history')
-        .select('metadata')
-        .eq('id', positionId)
-        .single();
+      const { data: position } = await tradeHistory.getById(positionId);
       
       if (position) {
         const tradePosition = position as TradeHistory;
@@ -97,12 +84,9 @@ export const modifyPosition = async (
         }
         
         // Update the position
-        await supabase
-          .from('trade_history')
-          .update({
-            metadata: updatedMetadata
-          })
-          .eq('id', positionId);
+        await tradeHistory.update(positionId, {
+          metadata: updatedMetadata
+        });
       }
     }
   } catch (error) {
@@ -154,11 +138,7 @@ export const getOpenPositions = async (): Promise<Position[]> => {
     const currentBrokerType = getCurrentBroker();
     
     if (sessionData.session) {
-      const { data: positions, error } = await supabase
-        .from('trade_history')
-        .select('*')
-        .eq('status', 'open')
-        .order('open_time', { ascending: false });
+      const { data: positions, error } = await tradeHistory.getOpenPositions();
       
       if (!error && positions && positions.length > 0) {
         // Transform the database records to the expected format

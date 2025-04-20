@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,10 +14,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BrokerType, connectToBroker } from '@/services/brokerService';
 import { AlertCircle, Check, Loader2, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from "@/integrations/supabase/client";
+import { brokerConnections } from "@/utils/supabaseHelpers";
 import { BrokerConnection } from '@/types/supabase';
 import BrokerFieldGroups from './BrokerFieldGroups';
 import SavedBrokerConnections from './SavedBrokerConnections';
+import { supabase } from "@/integrations/supabase/client";
 
 export const BrokerConnectionForm = () => {
   const { toast } = useToast();
@@ -45,10 +45,7 @@ export const BrokerConnectionForm = () => {
   const fetchSavedConnections = async () => {
     setLoadingSaved(true);
     try {
-      const { data, error } = await supabase
-        .from('broker_connections')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await brokerConnections.getAll();
       
       if (error) throw error;
       

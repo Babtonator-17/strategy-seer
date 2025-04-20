@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { assistantConversations } from '@/utils/supabaseHelpers';
 import { AssistantConversation } from '@/types/supabase';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/providers/AuthProvider';
@@ -89,11 +89,7 @@ export const AITradingAssistant = () => {
       if (!user) return;
       
       try {
-        const { data, error } = await supabase
-          .from('assistant_conversations')
-          .select('*')
-          .order('updated_at', { ascending: false })
-          .limit(1);
+        const { data, error } = await assistantConversations.getLatest();
         
         if (error) {
           console.error('Error fetching conversation:', error);
@@ -116,7 +112,6 @@ export const AITradingAssistant = () => {
     fetchConversation();
   }, [user]);
   
-  // Auto-refresh market data
   useEffect(() => {
     let refreshInterval: number | null = null;
     
@@ -219,7 +214,6 @@ export const AITradingAssistant = () => {
         }
       }
       
-      // Always include some basic market data for context
       if (Object.keys(marketContextData).length === 0) {
         try {
           marketContextData.cryptoData = await fetchCryptoMarketData(['bitcoin', 'ethereum']);

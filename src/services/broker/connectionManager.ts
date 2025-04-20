@@ -1,6 +1,7 @@
-import { supabase } from "@/integrations/supabase/client";
+import { brokerConnections } from "@/utils/supabaseHelpers";
 import { BrokerConnectionParams, BrokerType } from "./types";
 import { storeBrokerConnection } from "../brokerService";
+import { supabase } from "@/integrations/supabase/client";
 
 // Track current broker connection state
 let currentBrokerType: BrokerType = BrokerType.DEMO;
@@ -153,10 +154,7 @@ export const disconnectFromBroker = async (): Promise<boolean> => {
   if (currentBrokerConnectionId) {
     try {
       // Try to update the database
-      await supabase
-        .from('broker_connections')
-        .update({ is_active: false })
-        .eq('id', currentBrokerConnectionId);
+      await brokerConnections.setInactive(currentBrokerConnectionId);
         
       // Also update localStorage
       try {
