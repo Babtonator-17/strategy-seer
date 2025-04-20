@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Json } from "@/types/supabase";
+import { Json } from "@/integrations/supabase/types";
 
 /**
  * Helper functions to safely interact with Supabase tables
