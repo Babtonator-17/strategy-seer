@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import { useAuth } from '@/providers/AuthProvider';
 
 interface LoginPromptProps {
   loading: boolean;
@@ -10,6 +11,8 @@ interface LoginPromptProps {
 }
 
 const LoginPrompt: React.FC<LoginPromptProps> = ({ loading, onTryWithoutLogin }) => {
+  const { tryWithoutLogin } = useAuth();
+  
   if (loading) {
     return (
       <div className="w-full flex justify-center p-4">
@@ -17,6 +20,16 @@ const LoginPrompt: React.FC<LoginPromptProps> = ({ loading, onTryWithoutLogin })
       </div>
     );
   }
+  
+  const handleTryWithoutLogin = async () => {
+    try {
+      await tryWithoutLogin();
+      // Call the parent component's callback to update UI
+      onTryWithoutLogin();
+    } catch (error) {
+      console.error('Error in try without login:', error);
+    }
+  };
   
   return (
     <div className="w-full space-y-3">
@@ -41,7 +54,7 @@ const LoginPrompt: React.FC<LoginPromptProps> = ({ loading, onTryWithoutLogin })
         <Button 
           variant="outline" 
           className="flex-1"
-          onClick={() => onTryWithoutLogin()}
+          onClick={handleTryWithoutLogin}
           type="button"
         >
           Try Without Login

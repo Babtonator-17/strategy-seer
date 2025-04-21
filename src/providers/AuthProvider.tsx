@@ -92,6 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Try without login function
   const tryWithoutLogin = async () => {
     try {
+      setLoading(true);
+      
       toast({
         title: "Using without login",
         description: "You're now using the platform without being logged in. Your data won't be saved.",
@@ -100,17 +102,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Connect to demo broker account even without login
       await connectToDemoAccount();
       
+      setLoading(false);
       return Promise.resolve();
     } catch (error) {
+      setLoading(false);
       console.error('Error in tryWithoutLogin:', error);
+      
+      toast({
+        title: "Error",
+        description: "Failed to initialize without login. Please try again or create an account.",
+        variant: "destructive",
+      });
+      
       return Promise.reject(error);
     }
   };
 
   const signOut = async () => {
     try {
+      setLoading(true);
       await supabase.auth.signOut();
+      setLoading(false);
     } catch (error) {
+      setLoading(false);
       console.error('Error signing out:', error);
       toast({
         title: "Error",

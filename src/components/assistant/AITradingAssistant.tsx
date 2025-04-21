@@ -326,6 +326,10 @@ export const AITradingAssistant = () => {
   
   const handleTryWithoutLogin = () => {
     setMessages([welcomeMessage]);
+    toast({
+      title: "Demo Mode Activated",
+      description: "You're now using the AI Assistant without logging in. Your conversations won't be saved.",
+    });
   };
   
   return (
