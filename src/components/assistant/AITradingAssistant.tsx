@@ -23,6 +23,10 @@ import LoginPrompt from './LoginPrompt';
 import TradeConfirmationDialog from './TradeConfirmationDialog';
 import { useMarketData } from './useMarketData';
 
+import AIAssistantHeader from './AIAssistantHeader';
+import AIAssistantMessages from './AIAssistantMessages';
+import AIAssistantInput from './AIAssistantInput';
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -334,64 +338,31 @@ export const AITradingAssistant = () => {
   
   return (
     <Card className="w-full h-[600px] flex flex-col">
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle>Advanced AI Assistant</CardTitle>
-            <CardDescription>
-              Ask me anything about trading, markets, or any topic you're interested in
-            </CardDescription>
-          </div>
-          <div className="flex gap-2 items-center">
-            <Button 
-              size="sm" 
-              variant="outline" 
-              className="h-8" 
-              onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
-              title={autoRefreshEnabled ? "Disable auto-refresh" : "Enable auto-refresh"}
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoadingMarketData ? 'animate-spin' : ''} ${autoRefreshEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
-              <span className="ml-2 hidden sm:inline">{autoRefreshEnabled ? "Auto" : "Manual"}</span>
-            </Button>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[180px]">
-              <TabsList className="grid grid-cols-2">
-                <TabsTrigger value="chat">Chat</TabsTrigger>
-                <TabsTrigger value="settings">Settings</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        </div>
-      </CardHeader>
-      
+      <AIAssistantHeader
+        autoRefreshEnabled={autoRefreshEnabled}
+        isLoadingMarketData={isLoadingMarketData}
+        onToggleAutoRefresh={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+      />
       <CardContent className="flex-grow overflow-hidden flex flex-col p-0">
         <Tabs value={activeTab} className="flex-grow flex flex-col">
           <TabsContent value="chat" className="flex-grow overflow-hidden flex flex-col m-0 p-0">
-            <div className="px-6">
-              <ControlModeAlert enabled={controlMode} />
-              
-              <MarketDataDisplay 
-                marketData={marketData} 
-                isLoading={isLoadingMarketData} 
-                onRefresh={refreshMarketData}
-                collapsed={marketDataCollapsed}
-                toggleCollapsed={() => setMarketDataCollapsed(!marketDataCollapsed)}
-              />
-              
-              <SuggestedCommands 
-                commands={suggestedCommands}
-                onCommandClick={handleCommandClick}
-              />
-            </div>
-            
-            <MessageList
-              messages={messages}
+            <AIAssistantMessages
               controlMode={controlMode}
+              marketData={marketData}
+              isLoadingMarketData={isLoadingMarketData}
+              onRefreshMarketData={refreshMarketData}
+              marketDataCollapsed={marketDataCollapsed}
+              toggleMarketDataCollapsed={() => setMarketDataCollapsed(!marketDataCollapsed)}
+              suggestedCommands={suggestedCommands}
+              onCommandClick={handleCommandClick}
+              messages={messages}
               onConfirmTrade={(command) => setConfirmTrade({ show: true, command })}
             />
           </TabsContent>
-          
           <TabsContent value="settings" className="flex-grow overflow-auto m-0 p-6">
-            <AssistantSettings 
+            <AssistantSettings
               controlMode={controlMode}
               onControlModeChange={setControlMode}
               autoRefresh={autoRefreshEnabled}
@@ -400,37 +371,27 @@ export const AITradingAssistant = () => {
           </TabsContent>
         </Tabs>
       </CardContent>
-      
       <CardFooter>
-        {!user && !authLoading ? (
-          <LoginPrompt 
-            loading={authLoading}
-            onTryWithoutLogin={handleTryWithoutLogin}
-          />
-        ) : authLoading ? (
-          <LoginPrompt 
-            loading={authLoading}
-            onTryWithoutLogin={handleTryWithoutLogin}
-          />
-        ) : (
-          <QueryInput
-            query={query}
-            setQuery={setQuery}
-            loading={loading}
-            error={error}
-            onSubmit={handleSubmit}
-            isListening={isListening}
-            toggleListening={toggleListening}
-            retryLastMessage={retryLastMessage}
-            isMobile={isMobile}
-          />
-        )}
+        <AIAssistantInput
+          user={user}
+          authLoading={authLoading}
+          loading={loading}
+          error={error}
+          query={query}
+          setQuery={setQuery}
+          onSubmit={handleSubmit}
+          isListening={isListening}
+          toggleListening={toggleListening}
+          retryLastMessage={retryLastMessage}
+          isMobile={isMobile}
+          onTryWithoutLogin={handleTryWithoutLogin}
+        />
       </CardFooter>
-      
       <TradeConfirmationDialog
         show={confirmTrade.show}
         command={confirmTrade.command}
-        onOpenChange={(open) => setConfirmTrade({ show: open, command: confirmTrade.command })}
+        onOpenChange={(open) =>
+          setConfirmTrade({ show: open, command: confirmTrade.command })}
         onConfirm={handleTradeExecution}
       />
     </Card>
