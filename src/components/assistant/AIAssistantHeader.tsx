@@ -1,12 +1,18 @@
 
 import React from 'react';
-import { CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { 
+  RefreshCw, 
+  Settings,
+  MessageSquare,
+  BookPlus,
+  HelpCircle
+} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { ConfigStatus } from '@/utils/configChecker';
+import { useAIAssistant } from '@/contexts/AIAssistantContext';
 
 interface AIAssistantHeaderProps {
   autoRefreshEnabled: boolean;
@@ -14,7 +20,7 @@ interface AIAssistantHeaderProps {
   onToggleAutoRefresh: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  configStatus?: ConfigStatus;
+  configStatus: ConfigStatus;
 }
 
 const AIAssistantHeader: React.FC<AIAssistantHeaderProps> = ({
@@ -24,92 +30,98 @@ const AIAssistantHeader: React.FC<AIAssistantHeaderProps> = ({
   activeTab,
   setActiveTab,
   configStatus
-}) => (
-  <CardHeader className="pb-2">
-    <div className="flex justify-between items-start">
-      <div>
-        <CardTitle>Advanced AI Assistant</CardTitle>
-        <CardDescription>
-          Ask me anything about trading, markets, or any topic you're interested in
-        </CardDescription>
-        
-        {configStatus && !configStatus.checkingOpenAI && !configStatus.checkingSupabase && (
-          <div className="flex gap-2 mt-1">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant={configStatus.supabaseConnected ? "outline" : "destructive"} className="flex items-center gap-1">
-                    {configStatus.supabaseConnected 
-                      ? <CheckCircle2 className="h-3 w-3 text-green-500" /> 
-                      : <AlertTriangle className="h-3 w-3" />
-                    }
-                    <span>Database</span>
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {configStatus.supabaseConnected 
-                    ? "Database connection is working" 
-                    : "Database connection issue"
-                  }
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant={configStatus.openaiKeyValid ? "outline" : "destructive"} className="flex items-center gap-1">
-                    {configStatus.openaiKeyValid 
-                      ? <CheckCircle2 className="h-3 w-3 text-green-500" /> 
-                      : <AlertTriangle className="h-3 w-3" />
-                    }
-                    <span>OpenAI</span>
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {configStatus.openaiKeyValid 
-                    ? "OpenAI API key is valid" 
-                    : "OpenAI API key is missing or invalid"
-                  }
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="secondary" className="flex items-center gap-1 bg-amber-500/20 text-amber-300 border-amber-500/50">
-                    <span className="font-medium">DEMO MODE</span>
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  The application is running in demo mode. Trades are simulated.
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
+}) => {
+  const { startNewChat } = useAIAssistant();
+  
+  return (
+    <div className="flex justify-between items-center px-6 py-2 border-b">
+      <div className="flex items-center">
+        <h3 className="text-lg font-semibold mr-4">Trading Assistant</h3>
+        {!configStatus.openaiKeyValid && !configStatus.checkingOpenAI && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="destructive" className="mr-2">
+                  API Key Missing
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>OpenAI API key is missing or invalid. Add it in Settings.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
-      <div className="flex gap-2 items-center">
-        <Button 
-          size="sm" 
-          variant="outline" 
-          className="h-8" 
-          onClick={onToggleAutoRefresh}
-          title={autoRefreshEnabled ? "Disable auto-refresh" : "Enable auto-refresh"}
-        >
-          <RefreshCw className={`h-4 w-4 ${isLoadingMarketData ? 'animate-spin' : ''} ${autoRefreshEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
-          <span className="ml-2 hidden sm:inline">{autoRefreshEnabled ? "Auto" : "Manual"}</span>
-        </Button>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[180px]">
-          <TabsList className="grid grid-cols-2">
-            <TabsTrigger value="chat">Chat</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
-        </Tabs>
+      
+      <div className="flex items-center gap-2">
+        {activeTab === 'chat' && (
+          <>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex items-center gap-1" 
+                    onClick={startNewChat}
+                  >
+                    <BookPlus className="h-4 w-4" />
+                    <span className="hidden sm:inline">New Chat</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Start a new conversation</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onToggleAutoRefresh}
+                    className={`${autoRefreshEnabled ? 'text-green-500' : 'text-muted-foreground'}`}
+                    disabled={isLoadingMarketData}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isLoadingMarketData ? 'animate-spin' : ''}`} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{autoRefreshEnabled ? 'Disable' : 'Enable'} auto-refresh market data</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </>
+        )}
+        
+        <TabsList className="h-8">
+          <TabsTrigger value="chat" onClick={() => setActiveTab('chat')} className="px-3 h-7">
+            <MessageSquare className="h-4 w-4 mr-1" />
+            <span className="hidden sm:inline">Chat</span>
+          </TabsTrigger>
+          <TabsTrigger value="settings" onClick={() => setActiveTab('settings')} className="px-3 h-7">
+            <Settings className="h-4 w-4 mr-1" />
+            <span className="hidden sm:inline">Settings</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <HelpCircle className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Get help with the Trading Assistant</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </div>
-  </CardHeader>
-);
+  );
+}
 
 export default AIAssistantHeader;

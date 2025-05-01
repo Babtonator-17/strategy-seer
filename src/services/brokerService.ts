@@ -2,6 +2,9 @@
 // Re-export all broker service methods and types
 export * from './broker';
 
+import { createBrokerAdapter } from './broker/adapters/brokerAdapter';
+import { getCurrentBroker, getCurrentBrokerConnectionId } from './broker/connectionManager';
+
 // Add additional mobile-compatible utilities
 export const isBrokerConnected = (): boolean => {
   try {
@@ -51,6 +54,32 @@ export const getConnectionStatus = () => {
   const connection = getActiveConnection();
   if (!connection) return { connected: false, type: null };
   return { connected: true, type: connection.type };
+};
+
+// Get account balance and info
+export const getAccountInfo = async () => {
+  const currentBroker = getCurrentBroker();
+  const currentConnectionId = getCurrentBrokerConnectionId();
+  
+  if (!currentBroker || !currentConnectionId) {
+    throw new Error('No active broker connection');
+  }
+  
+  const adapter = createBrokerAdapter(currentBroker, { accountId: currentConnectionId });
+  return adapter.getAccountInfo();
+};
+
+// Get open positions
+export const getOpenPositions = async () => {
+  const currentBroker = getCurrentBroker();
+  const currentConnectionId = getCurrentBrokerConnectionId();
+  
+  if (!currentBroker || !currentConnectionId) {
+    throw new Error('No active broker connection');
+  }
+  
+  const adapter = createBrokerAdapter(currentBroker, { accountId: currentConnectionId });
+  return adapter.getPositions();
 };
 
 // Store broker connection in localStorage for persistence across sessions

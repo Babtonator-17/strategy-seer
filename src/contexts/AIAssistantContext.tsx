@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -53,6 +52,8 @@ interface AIAssistantContextType {
   handleTradeExecution: (confirmed: boolean) => void;
   handleTryWithoutLogin: () => void;
   setConfirmTrade: (state: { show: boolean; command: string | null }) => void;
+  clearHistory: () => void;
+  startNewChat: () => void;
 }
 
 const AIAssistantContext = createContext<AIAssistantContextType | undefined>(undefined);
@@ -73,18 +74,27 @@ export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ childr
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const [query, setQuery] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const savedMessages = localStorage.getItem('chatHistory');
+    return savedMessages ? JSON.parse(savedMessages) : [];
+  });
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('chat');
-  const [controlMode, setControlMode] = useState(false);
+  const [controlMode, setControlMode] = useState(() => {
+    const saved = localStorage.getItem('controlMode');
+    return saved ? JSON.parse(saved) : false;
+  });
   const [confirmTrade, setConfirmTrade] = useState<{ show: boolean; command: string | null }>({ 
     show: false, 
     command: null 
   });
   const [marketDataCollapsed, setMarketDataCollapsed] = useState(false);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(() => {
+    const saved = localStorage.getItem('autoRefreshEnabled');
+    return saved ? JSON.parse(saved) : true;
+  });
   const [suggestedCommands, setSuggestedCommands] = useState<CommandButton[]>([
     { text: "Account Balance", command: "What's my account balance?" },
     { text: "Open Positions", command: "Show my open positions" },
@@ -104,6 +114,23 @@ export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ childr
     content: "Hello! I'm your advanced AI trading assistant. I can answer questions on virtually any topic, similar to ChatGPT, while specializing in trading strategies, market analysis, and financial insights. When Control Mode is enabled, I can even execute trades for you. What would you like to know about today?",
     timestamp: new Date().toISOString()
   }), []);
+  
+  // Persist messages to localStorage
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('chatHistory', JSON.stringify(messages));
+    }
+  }, [messages]);
+  
+  // Persist controlMode setting
+  useEffect(() => {
+    localStorage.setItem('controlMode', JSON.stringify(controlMode));
+  }, [controlMode]);
+  
+  // Persist autoRefreshEnabled setting
+  useEffect(() => {
+    localStorage.setItem('autoRefreshEnabled', JSON.stringify(autoRefreshEnabled));
+  }, [autoRefreshEnabled]);
   
   const { isListening, toggleListening } = useSpeechRecognition((transcript) => {
     setQuery(transcript);
@@ -134,7 +161,11 @@ export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ childr
           setConversationId(conversation.id);
           
           if (conversation.messages && conversation.messages.length > 0) {
-            setMessages(conversation.messages as Message[]);
+            // Only use stored messages if localStorage doesn't have messages
+            const localMessages = localStorage.getItem('chatHistory');
+            if (!localMessages || JSON.parse(localMessages).length === 0) {
+              setMessages(conversation.messages as Message[]);
+            }
           }
         }
       } catch (error) {
@@ -144,6 +175,22 @@ export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ childr
     
     fetchConversation();
   }, [user]);
+
+  const clearHistory = useCallback(() => {
+    localStorage.removeItem('chatHistory');
+    setMessages([welcomeMessage]);
+    setConversationId(null);
+    setError(null);
+    
+    toast({
+      title: "Chat history cleared",
+      description: "Started a new conversation"
+    });
+  }, [welcomeMessage, toast]);
+  
+  const startNewChat = useCallback(() => {
+    clearHistory();
+  }, [clearHistory]);
   
   useEffect(() => {
     let refreshInterval: number | null = null;
@@ -314,6 +361,7 @@ export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ childr
       };
       
       setMessages(prev => [...prev, assistantMessage]);
+      localStorage.setItem('chatHistory', JSON.stringify([...messages, userMessage, assistantMessage]));
       
       const updatedCommands = updateCommandsHelper(suggestedCommands, data.response);
       setSuggestedCommands(updatedCommands);
@@ -339,7 +387,7 @@ export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ childr
     } finally {
       setLoading(false);
     }
-  }, [query, conversationId, controlMode, toast, updateCommandsHelper, suggestedCommands]);
+  }, [query, conversationId, controlMode, toast, updateCommandsHelper, suggestedCommands, messages]);
   
   const handleCommandClick = useCallback((command: string) => {
     setQuery(command);
@@ -432,7 +480,9 @@ export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ childr
     refreshMarketData,
     handleTradeExecution,
     handleTryWithoutLogin,
-    setConfirmTrade
+    setConfirmTrade,
+    clearHistory,
+    startNewChat
   }), [
     query, messages, loading, error, isListening, controlMode, 
     autoRefreshEnabled, marketDataCollapsed, conversationId, confirmTrade,
@@ -440,7 +490,7 @@ export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ childr
     setQuery, setControlMode, setAutoRefreshEnabled, setActiveTab,
     toggleListening, handleSubmit, handleCommandClick, retryLastMessage,
     refreshMarketData, handleTradeExecution, handleTryWithoutLogin,
-    toggleMarketDataCollapsed
+    toggleMarketDataCollapsed, clearHistory, startNewChat
   ]);
 
   return (
