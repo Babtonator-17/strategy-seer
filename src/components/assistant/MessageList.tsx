@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, memo } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import ChatMessage from './ChatMessage';
@@ -16,6 +16,8 @@ interface MessageListProps {
   controlMode: boolean;
   onConfirmTrade: (command: string | null) => void;
 }
+
+const MemoizedChatMessage = memo(ChatMessage);
 
 const MessageList: React.FC<MessageListProps> = ({ 
   messages, 
@@ -35,8 +37,8 @@ const MessageList: React.FC<MessageListProps> = ({
       <ScrollArea className="flex-grow px-6 pr-2">
         <div className="space-y-4 pt-2">
           {messages.map((msg, index) => (
-            <ChatMessage 
-              key={index}
+            <MemoizedChatMessage 
+              key={`${index}-${msg.timestamp}`}
               message={msg}
               controlMode={controlMode}
               onConfirmTrade={onConfirmTrade}
@@ -49,4 +51,4 @@ const MessageList: React.FC<MessageListProps> = ({
   );
 };
 
-export default MessageList;
+export default memo(MessageList);

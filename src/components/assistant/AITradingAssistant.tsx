@@ -1,341 +1,81 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { assistantConversations } from '@/utils/supabaseHelpers';
-import { AssistantConversation } from '@/types/supabase';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useAuth } from '@/providers/AuthProvider';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import useSpeechRecognition from '@/hooks/use-speech-recognition';
-import { fetchMarketNews } from '@/services/aiService';
-import { fetchTechnicalAnalysis, fetchCryptoMarketData, fetchCommodityPrices } from '@/services/marketApiService';
 
-import MessageList from './MessageList';
-import SuggestedCommands from './SuggestedCommands';
-import AssistantSettings from './AssistantSettings';
-import ControlModeAlert from './ControlModeAlert';
-import MarketDataDisplay from './MarketDataDisplay';
-import QueryInput from './QueryInput';
-import LoginPrompt from './LoginPrompt';
-import TradeConfirmationDialog from './TradeConfirmationDialog';
-import { useMarketData } from './useMarketData';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { checkConfiguration } from '@/utils/configChecker';
 
 import AIAssistantHeader from './AIAssistantHeader';
 import AIAssistantMessages from './AIAssistantMessages';
 import AIAssistantInput from './AIAssistantInput';
+import AssistantSettings from './AssistantSettings';
+import TradeConfirmationDialog from './TradeConfirmationDialog';
+import { AIAssistantProvider, useAIAssistant } from '@/contexts/AIAssistantContext';
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp?: string;
-  metadata?: any;
-}
-
-interface CommandButton {
-  text: string;
-  command: string;
-}
-
-export const AITradingAssistant = () => {
-  const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
-  const [query, setQuery] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState('chat');
-  const [controlMode, setControlMode] = useState(false);
-  const [confirmTrade, setConfirmTrade] = useState<{ show: boolean; command: string | null }>({ 
-    show: false, 
-    command: null 
-  });
-  const [marketDataCollapsed, setMarketDataCollapsed] = useState(false);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
-  const [suggestedCommands, setSuggestedCommands] = useState<CommandButton[]>([
-    { text: "Account Balance", command: "What's my account balance?" },
-    { text: "Open Positions", command: "Show my open positions" },
-    { text: "BTCUSD Analysis", command: "Analyze BTCUSD trend" },
-    { text: "Risk Management", command: "Help with risk management" }
-  ]);
-  
-  const { 
-    marketData, 
-    isLoadingMarketData, 
+const AITradingAssistantContent = () => {
+  const {
+    controlMode,
+    marketData,
+    isLoadingMarketData,
     refreshMarketData,
-    updateSuggestedCommands: updateCommandsHelper
-  } = useMarketData(setSuggestedCommands, 30000);
+    marketDataCollapsed,
+    toggleMarketDataCollapsed,
+    suggestedCommands,
+    handleCommandClick,
+    messages,
+    confirmTrade,
+    setConfirmTrade,
+    handleTradeExecution,
+    autoRefreshEnabled,
+    isListening,
+    loading,
+    error,
+    query,
+    setQuery,
+    handleSubmit,
+    toggleListening,
+    retryLastMessage,
+    activeTab,
+    setActiveTab,
+    setControlMode,
+    setAutoRefreshEnabled,
+    handleTryWithoutLogin
+  } = useAIAssistant();
   
-  const welcomeMessage: Message = {
-    role: 'assistant',
-    content: "Hello! I'm your advanced AI trading assistant. I can answer questions on virtually any topic, similar to ChatGPT, while specializing in trading strategies, market analysis, and financial insights. When Control Mode is enabled, I can even execute trades for you. What would you like to know about today?",
-    timestamp: new Date().toISOString()
-  };
-  
-  const { isListening, toggleListening } = useSpeechRecognition((transcript) => {
-    setQuery(transcript);
+  const { toast } = useToast();
+  const [configStatus, setConfigStatus] = useState({
+    openaiKeyValid: true,
+    supabaseConnected: true,
+    checkingOpenAI: true,
+    checkingSupabase: true
   });
   
+  // Check configuration on component mount
   useEffect(() => {
-    if (messages.length === 0) {
-      setMessages([welcomeMessage]);
-    }
-  }, [messages]);
-  
-  useEffect(() => {
-    setError(null);
-    
-    const fetchConversation = async () => {
-      if (!user) return;
+    const checkConfig = async () => {
+      const status = await checkConfiguration();
+      setConfigStatus(status);
       
-      try {
-        const { data, error } = await assistantConversations.getLatest();
-        
-        if (error) {
-          console.error('Error fetching conversation:', error);
-          return;
-        }
-        
-        if (data && data.length > 0) {
-          const conversation = data[0] as AssistantConversation;
-          setConversationId(conversation.id);
-          
-          if (conversation.messages && conversation.messages.length > 0) {
-            setMessages(conversation.messages as Message[]);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching conversation history:', error);
+      if (!status.supabaseConnected) {
+        toast({
+          title: "Connection Issue",
+          description: "Could not connect to database. Some features may be unavailable.",
+          variant: "destructive"
+        });
+      }
+      
+      if (!status.openaiKeyValid && !status.checkingOpenAI) {
+        toast({
+          title: "API Key Issue",
+          description: "OpenAI API key is missing or invalid. AI responses may be unavailable.",
+          variant: "destructive"
+        });
       }
     };
     
-    fetchConversation();
-  }, [user]);
-  
-  useEffect(() => {
-    let refreshInterval: number | null = null;
-    
-    if (autoRefreshEnabled && !isLoadingMarketData) {
-      refreshInterval = window.setInterval(() => {
-        console.log('Auto-refreshing market data...');
-        refreshMarketData();
-      }, 30000); // 30 seconds
-    }
-    
-    return () => {
-      if (refreshInterval !== null) {
-        clearInterval(refreshInterval);
-      }
-    };
-  }, [autoRefreshEnabled, isLoadingMarketData, refreshMarketData]);
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!query.trim()) return;
-    
-    const userMessage: Message = {
-      role: 'user',
-      content: query,
-      timestamp: new Date().toISOString()
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
-    setQuery('');
-    setLoading(true);
-    setError(null);
-    
-    try {
-      let marketContextData: any = {};
-      
-      const lowerQuery = query.toLowerCase();
-      
-      if (
-        lowerQuery.includes('technical') || 
-        lowerQuery.includes('analysis') ||
-        lowerQuery.includes('indicators') ||
-        lowerQuery.includes('chart') ||
-        lowerQuery.includes('rsi') ||
-        lowerQuery.includes('macd')
-      ) {
-        const symbolMatch = lowerQuery.match(/\b(btc|eth|xrp|ada|btcusd|ethusd|eurusd|gbpusd|usdjpy|gold|xauusd)\b/i);
-        if (symbolMatch) {
-          const symbol = symbolMatch[0].toUpperCase();
-          try {
-            marketContextData.technicalAnalysis = await fetchTechnicalAnalysis(symbol);
-          } catch (err) {
-            console.error('Error fetching technical analysis for context:', err);
-          }
-        }
-      }
-      
-      if (
-        lowerQuery.includes('crypto') ||
-        lowerQuery.includes('bitcoin') ||
-        lowerQuery.includes('btc') ||
-        lowerQuery.includes('ethereum') ||
-        lowerQuery.includes('eth')
-      ) {
-        try {
-          marketContextData.cryptoData = await fetchCryptoMarketData(['bitcoin', 'ethereum', 'ripple', 'solana', 'cardano']);
-        } catch (err) {
-          console.error('Error fetching crypto data for context:', err);
-        }
-      }
-      
-      if (
-        lowerQuery.includes('commodity') ||
-        lowerQuery.includes('commodities') ||
-        lowerQuery.includes('gold') ||
-        lowerQuery.includes('oil') ||
-        lowerQuery.includes('metals')
-      ) {
-        try {
-          marketContextData.commodityData = await fetchCommodityPrices();
-        } catch (err) {
-          console.error('Error fetching commodity data for context:', err);
-        }
-      }
-      
-      if (
-        lowerQuery.includes('news') || 
-        lowerQuery.includes('market') ||
-        lowerQuery.includes('latest') ||
-        lowerQuery.includes('update') ||
-        lowerQuery.includes('information')
-      ) {
-        try {
-          const symbolMatch = lowerQuery.match(/\b(btc|eth|xrp|ada|btcusd|ethusd|eurusd|gbpusd|usdjpy|gold|xauusd)\b/i);
-          const symbol = symbolMatch ? symbolMatch[0].toUpperCase() : undefined;
-          
-          marketContextData.marketNews = await fetchMarketNews(symbol ? [symbol] : undefined);
-        } catch (err) {
-          console.error('Error fetching market news for context:', err);
-        }
-      }
-      
-      if (Object.keys(marketContextData).length === 0) {
-        try {
-          marketContextData.cryptoData = await fetchCryptoMarketData(['bitcoin', 'ethereum']);
-          marketContextData.marketNews = await fetchMarketNews(undefined, 2);
-        } catch (err) {
-          console.error('Error fetching baseline market data for context:', err);
-        }
-      }
-      
-      const { data, error } = await supabase.functions.invoke('ai-assistant', {
-        body: { 
-          query: userMessage.content,
-          conversationId,
-          controlMode,
-          marketContextData
-        }
-      });
-      
-      if (error) throw new Error(error.message);
-      
-      if (data.error) throw new Error(data.error);
-      
-      if (data.conversationId && !conversationId) {
-        setConversationId(data.conversationId);
-      }
-      
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: data.response,
-        timestamp: new Date().toISOString(),
-        metadata: data.executionResults ? { executionResults: data.executionResults } : undefined
-      };
-      
-      setMessages(prev => [...prev, assistantMessage]);
-      
-      const updatedCommands = updateCommandsHelper(suggestedCommands, data.response);
-      setSuggestedCommands(updatedCommands);
-      
-    } catch (error: any) {
-      console.error('Error getting AI response:', error);
-      setError(error.message || "Failed to get response from the assistant");
-      
-      toast({
-        title: "Error",
-        description: error.message || "Failed to get response from the assistant",
-        variant: "destructive"
-      });
-      
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: "I'm sorry, I encountered an error processing your request. Please try again later or try with a different question.",
-          timestamp: new Date().toISOString()
-        }
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleCommandClick = (command: string) => {
-    setQuery(command);
-    
-    setTimeout(() => {
-      const inputField = document.getElementById('query-input') as HTMLInputElement;
-      if (inputField) {
-        inputField.focus();
-        const event = new Event('input', { bubbles: true });
-        inputField.dispatchEvent(event);
-      }
-    }, 50);
-  };
+    checkConfig();
+  }, [toast]);
 
-  const retryLastMessage = () => {
-    if (messages.length < 2) return;
-    
-    const lastUserMessageIndex = [...messages].reverse().findIndex(m => m.role === 'user');
-    if (lastUserMessageIndex === -1) return;
-    
-    const actualIndex = messages.length - 1 - lastUserMessageIndex;
-    const lastUserMessage = messages[actualIndex];
-    
-    setQuery(lastUserMessage.content);
-    setMessages(messages.slice(0, actualIndex));
-  };
-  
-  const handleTradeExecution = (confirmed: boolean) => {
-    if (confirmed && confirmTrade.command) {
-      toast({
-        title: "Trade Executed",
-        description: "Your trade command has been executed successfully",
-      });
-      
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: `Trade executed: ${confirmTrade.command.replace('[TRADE:', '').replace(']', '')}`,
-        timestamp: new Date().toISOString(),
-        metadata: { 
-          executionResults: [{ 
-            success: true, 
-            message: "Trade executed successfully" 
-          }] 
-        }
-      }]);
-    }
-    
-    setConfirmTrade({ show: false, command: null });
-  };
-  
-  const handleTryWithoutLogin = () => {
-    setMessages([welcomeMessage]);
-    toast({
-      title: "Demo Mode Activated",
-      description: "You're now using the AI Assistant without logging in. Your conversations won't be saved.",
-    });
-  };
-  
   return (
     <Card className="w-full h-[600px] flex flex-col">
       <AIAssistantHeader
@@ -344,6 +84,7 @@ export const AITradingAssistant = () => {
         onToggleAutoRefresh={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        configStatus={configStatus}
       />
       <CardContent className="flex-grow overflow-hidden flex flex-col p-0">
         <Tabs value={activeTab} className="flex-grow flex flex-col">
@@ -354,7 +95,7 @@ export const AITradingAssistant = () => {
               isLoadingMarketData={isLoadingMarketData}
               onRefreshMarketData={refreshMarketData}
               marketDataCollapsed={marketDataCollapsed}
-              toggleMarketDataCollapsed={() => setMarketDataCollapsed(!marketDataCollapsed)}
+              toggleMarketDataCollapsed={toggleMarketDataCollapsed}
               suggestedCommands={suggestedCommands}
               onCommandClick={handleCommandClick}
               messages={messages}
@@ -367,14 +108,15 @@ export const AITradingAssistant = () => {
               onControlModeChange={setControlMode}
               autoRefresh={autoRefreshEnabled}
               onAutoRefreshChange={setAutoRefreshEnabled}
+              configStatus={configStatus}
             />
           </TabsContent>
         </Tabs>
       </CardContent>
       <CardFooter>
         <AIAssistantInput
-          user={user}
-          authLoading={authLoading}
+          user={null}
+          authLoading={false}
           loading={loading}
           error={error}
           query={query}
@@ -383,7 +125,7 @@ export const AITradingAssistant = () => {
           isListening={isListening}
           toggleListening={toggleListening}
           retryLastMessage={retryLastMessage}
-          isMobile={isMobile}
+          isMobile={false}
           onTryWithoutLogin={handleTryWithoutLogin}
         />
       </CardFooter>
@@ -395,6 +137,14 @@ export const AITradingAssistant = () => {
         onConfirm={handleTradeExecution}
       />
     </Card>
+  );
+};
+
+export const AITradingAssistant = () => {
+  return (
+    <AIAssistantProvider>
+      <AITradingAssistantContent />
+    </AIAssistantProvider>
   );
 };
 

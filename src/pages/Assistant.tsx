@@ -6,19 +6,36 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/providers/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Bot, Briefcase, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ArrowRight, Bot, Briefcase, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { isBrokerConnected, getConnectionStatus } from '@/services/brokerService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import { checkConfiguration } from '@/utils/configChecker';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const Assistant = () => {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const [brokerStatus, setBrokerStatus] = useState({ connected: false, type: null });
   const { toast } = useToast();
+  const [configError, setConfigError] = useState<string | null>(null);
   
   useEffect(() => {
+    // Check configuration on load
+    const verifyConfig = async () => {
+      try {
+        const configStatus = await checkConfiguration();
+        if (!configStatus.openaiKeyValid && !configStatus.checkingOpenAI) {
+          setConfigError("OpenAI API key is missing or invalid. The AI assistant may not work properly.");
+        }
+      } catch (err) {
+        console.error("Error checking configuration:", err);
+      }
+    };
+    
+    verifyConfig();
+    
     // Check broker connection status
     const checkBrokerStatus = () => {
       const status = getConnectionStatus();
@@ -32,7 +49,7 @@ const Assistant = () => {
     const interval = setInterval(checkBrokerStatus, 5000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [toast]);
   
   return (
     <DashboardLayout>
@@ -91,6 +108,22 @@ const Assistant = () => {
             </div>
           )}
         </div>
+        
+        {configError && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Configuration Issue</AlertTitle>
+            <AlertDescription>{configError}</AlertDescription>
+          </Alert>
+        )}
+        
+        <Alert className="bg-amber-500/20 border-amber-500/30">
+          <Info className="h-4 w-4 text-amber-500" />
+          <AlertTitle className="text-amber-500">Demo Mode</AlertTitle>
+          <AlertDescription className="text-amber-400">
+            This assistant is running in demo mode. All trades are simulated and no real orders will be placed.
+          </AlertDescription>
+        </Alert>
         
         <div className="grid grid-cols-1 gap-6">
           <AITradingAssistant />
