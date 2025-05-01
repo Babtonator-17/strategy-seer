@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect, memo } from 'react';
+import React, { useRef, useEffect, memo, useMemo } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import ChatMessage from './ChatMessage';
@@ -26,6 +26,10 @@ const MessageList: React.FC<MessageListProps> = ({
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
   
+  // Memoize messages to prevent unnecessary re-renders
+  const memoizedMessages = useMemo(() => messages, [messages]);
+  
+  // Auto-scroll to the bottom when new messages arrive
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -36,9 +40,9 @@ const MessageList: React.FC<MessageListProps> = ({
       
       <ScrollArea className="flex-grow px-6 pr-2">
         <div className="space-y-4 pt-2">
-          {messages.map((msg, index) => (
+          {memoizedMessages.map((msg, index) => (
             <MemoizedChatMessage 
-              key={`${index}-${msg.timestamp}`}
+              key={`${index}-${msg.timestamp || Date.now()}`}
               message={msg}
               controlMode={controlMode}
               onConfirmTrade={onConfirmTrade}

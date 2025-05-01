@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { checkConfiguration } from '@/utils/configChecker';
+import { checkConfiguration, notifyConfigurationStatus } from '@/utils/configChecker';
 
 import AIAssistantHeader from './AIAssistantHeader';
 import AIAssistantMessages from './AIAssistantMessages';
@@ -56,21 +56,8 @@ const AITradingAssistantContent = () => {
       const status = await checkConfiguration();
       setConfigStatus(status);
       
-      if (!status.supabaseConnected) {
-        toast({
-          title: "Connection Issue",
-          description: "Could not connect to database. Some features may be unavailable.",
-          variant: "destructive"
-        });
-      }
-      
-      if (!status.openaiKeyValid && !status.checkingOpenAI) {
-        toast({
-          title: "API Key Issue",
-          description: "OpenAI API key is missing or invalid. AI responses may be unavailable.",
-          variant: "destructive"
-        });
-      }
+      // Display notifications based on config status
+      notifyConfigurationStatus(status);
     };
     
     checkConfig();

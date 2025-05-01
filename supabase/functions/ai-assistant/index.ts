@@ -6,6 +6,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS'
 };
 
 // Create a Supabase client
@@ -50,7 +51,7 @@ Current date: ${new Date().toISOString().split('T')[0]}
     
     if (marketContextData.marketNews && marketContextData.marketNews.length > 0) {
       systemPrompt += "Recent Market News Headlines:\n";
-      marketContextData.marketNews.slice(0, 3).forEach((news: any, index: number) => {
+      marketContextData.marketNews.slice(0, 3).forEach((news: any) => {
         systemPrompt += `- ${news.title} (${news.source})\n`;
       });
       systemPrompt += "\n";
@@ -93,7 +94,7 @@ serve(async (req) => {
   if (!openaiApiKey) {
     return new Response(
       JSON.stringify({ 
-        error: "OpenAI API key is not configured. Please add it to the environment variables." 
+        error: "OpenAI API key is not configured. Please add it to the Supabase Edge Function secrets." 
       }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },

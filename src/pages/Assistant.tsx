@@ -6,12 +6,12 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/providers/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Bot, Briefcase, CheckCircle, AlertTriangle, Info } from 'lucide-react';
+import { ArrowRight, Bot, Briefcase, CheckCircle, AlertTriangle, Info, HelpCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { isBrokerConnected, getConnectionStatus } from '@/services/brokerService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { checkConfiguration } from '@/utils/configChecker';
+import { checkConfiguration, notifyConfigurationStatus } from '@/utils/configChecker';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const Assistant = () => {
@@ -26,11 +26,14 @@ const Assistant = () => {
     const verifyConfig = async () => {
       try {
         const configStatus = await checkConfiguration();
+        notifyConfigurationStatus(configStatus);
+        
         if (!configStatus.openaiKeyValid && !configStatus.checkingOpenAI) {
           setConfigError("OpenAI API key is missing or invalid. The AI assistant may not work properly.");
         }
       } catch (err) {
         console.error("Error checking configuration:", err);
+        setConfigError("Failed to check application configuration. Some features may not work correctly.");
       }
     };
     
@@ -56,7 +59,10 @@ const Assistant = () => {
       <div className="space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold">AI Assistant</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl md:text-2xl font-bold">AI Assistant</h1>
+              <Badge variant="secondary" className="bg-amber-500/20 text-amber-500 hover:bg-amber-500/30">Demo Mode</Badge>
+            </div>
             <p className="text-sm md:text-base text-muted-foreground">
               Get help with trading strategies, market analysis, and execute trades with voice commands
             </p>
@@ -105,6 +111,18 @@ const Assistant = () => {
                   Manage Brokers
                 </Link>
               </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button size="icon" variant="ghost">
+                    <HelpCircle className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">
+                    This assistant helps with market analysis and trading advice. Use the chat to ask questions about markets, strategies, or to execute simulated trades.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           )}
         </div>
@@ -113,7 +131,12 @@ const Assistant = () => {
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Configuration Issue</AlertTitle>
-            <AlertDescription>{configError}</AlertDescription>
+            <AlertDescription>
+              {configError}
+              <Button variant="link" asChild className="pl-0 mt-2">
+                <Link to="/settings">Go to Settings</Link>
+              </Button>
+            </AlertDescription>
           </Alert>
         )}
         

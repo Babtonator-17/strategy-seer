@@ -5,6 +5,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS'
 };
 
 // Get API key from environment variables
@@ -21,7 +22,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         valid: false, 
-        error: "OpenAI API key is not configured" 
+        error: "OpenAI API key is not configured in Supabase secrets" 
       }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },
