@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronDown, Maximize2, PanelRight, TrendingUp } from 'lucide-react';
+import { Maximize2, PanelRight, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { fetchPriceData } from '@/services/marketDataService';
 
@@ -100,8 +100,7 @@ const PriceChart = () => {
             </TabsList>
           </Tabs>
           
-          <div className="hidden sm:flex">
-            {/* Fixed: Wrapped TabsList in Tabs component */}
+          <div className="hidden sm:block">
             <Tabs value={activeTimeframe} onValueChange={setActiveTimeframe}>
               <TabsList className="bg-background">
                 {timeframes.map((timeframe) => (
