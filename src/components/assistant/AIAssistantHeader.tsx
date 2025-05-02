@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
@@ -96,16 +96,18 @@ const AIAssistantHeader: React.FC<AIAssistantHeaderProps> = ({
           </>
         )}
         
-        <TabsList className="h-8">
-          <TabsTrigger value="chat" onClick={() => setActiveTab('chat')} className="px-3 h-7">
-            <MessageSquare className="h-4 w-4 mr-1" />
-            <span className="hidden sm:inline">Chat</span>
-          </TabsTrigger>
-          <TabsTrigger value="settings" onClick={() => setActiveTab('settings')} className="px-3 h-7">
-            <Settings className="h-4 w-4 mr-1" />
-            <span className="hidden sm:inline">Settings</span>
-          </TabsTrigger>
-        </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="h-8">
+            <TabsTrigger value="chat" className="px-3 h-7">
+              <MessageSquare className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Chat</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="px-3 h-7">
+              <Settings className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Settings</span>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         <TooltipProvider>
           <Tooltip>
