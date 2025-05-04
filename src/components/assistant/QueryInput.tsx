@@ -1,8 +1,6 @@
 
 import React from 'react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Send, Loader2, Mic, RefreshCw, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface QueryInputProps {
@@ -23,7 +21,7 @@ const QueryInput: React.FC<QueryInputProps> = ({
       <Input
         id="query-input"
         placeholder="Ask about trading or enter a command..."
-        value={value}
+        value={value || ''}
         onChange={onChange}
         disabled={disabled}
         className="w-full pr-10"

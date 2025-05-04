@@ -55,11 +55,18 @@ const AIAssistantInput: React.FC<AIAssistantInputProps> = ({
     return <LoginPrompt loading={authLoading} onTryWithoutLogin={onTryWithoutLogin} />;
   }
   
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loading && query.trim()) {
+      onSubmit(e);
+    }
+  };
+  
   return (
     <Card className={cn("flex w-full overflow-hidden flex-shrink-0", 
       isMobile ? "border-0 rounded-none p-2" : ""
     )}>
-      <form className="flex items-center w-full gap-2 px-1" onSubmit={onSubmit}>
+      <form className="flex items-center w-full gap-2 px-1" onSubmit={handleSubmit}>
         
         <QueryInput 
           value={query} 
@@ -99,7 +106,7 @@ const AIAssistantInput: React.FC<AIAssistantInputProps> = ({
         <Button 
           type="submit" 
           size="icon" 
-          disabled={loading || !query.trim()}
+          disabled={loading || !query || !query.trim()}
           className="flex-shrink-0"
           variant="default"
         >
