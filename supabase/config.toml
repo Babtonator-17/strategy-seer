@@ -43,5 +43,14 @@ backend = "postgres"
 [functions.ai-assistant]
 verify_jwt = true
 
+[functions.ai-chat]
+verify_jwt = false
+
 [functions.check-openai-key]
 verify_jwt = true
+
+[functions.market-data]
+verify_jwt = false
+
+[functions.trade-execution]
+verify_jwt = false
