@@ -50,7 +50,7 @@ function calculateFees(amount: number, price: number, symbol: string): number {
   }
 }
 
-async function executeDemo Trade(trade: TradeRequest): Promise<TradeResult> {
+async function executeDemoTrade(trade: TradeRequest): Promise<TradeResult> {
   try {
     const orderId = generateOrderId();
     const executedPrice = trade.price || (42000 + (Math.random() - 0.5) * 100); // Mock execution with slippage
