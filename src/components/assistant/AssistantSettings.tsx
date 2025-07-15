@@ -43,9 +43,9 @@ const AssistantSettings: React.FC<AssistantSettingsProps> = ({
           {configStatus?.checkingOpenAI && (
             <Alert>
               <Loader2 className="h-4 w-4 animate-spin" />
-              <AlertTitle>Checking OpenAI Configuration</AlertTitle>
+              <AlertTitle>Checking OpenRouter Configuration</AlertTitle>
               <AlertDescription>
-                Verifying that the OpenAI API key is valid...
+                Verifying OpenRouter API connectivity...
               </AlertDescription>
             </Alert>
           )}
@@ -63,12 +63,10 @@ const AssistantSettings: React.FC<AssistantSettingsProps> = ({
           {configStatus && !configStatus.openaiKeyValid && !configStatus.checkingOpenAI && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>OpenAI API Key Issue</AlertTitle>
+              <AlertTitle>API Configuration Required</AlertTitle>
               <AlertDescription>
-                <p>The OpenAI API key is missing or invalid. The assistant will not be able to process requests.</p>
-                <Button variant="outline" className="mt-2" size="sm" asChild>
-                  <Link to="/settings">Configure API Key</Link>
-                </Button>
+                <p>OpenRouter API key is not configured. The AI assistant requires an OpenRouter API key to function properly.</p>
+                <p className="mt-2">Please contact your administrator to configure the API key in Supabase Edge Function secrets.</p>
               </AlertDescription>
             </Alert>
           )}
@@ -94,9 +92,10 @@ const AssistantSettings: React.FC<AssistantSettingsProps> = ({
           {configStatus && configStatus.openaiKeyValid && !configStatus.checkingOpenAI && (
             <Alert className="bg-green-500/10 text-green-500 border-green-500/20">
               <CheckCircle2 className="h-4 w-4" />
-              <AlertTitle>OpenAI Connection Active</AlertTitle>
+              <AlertTitle>OpenRouter Connection Active</AlertTitle>
               <AlertDescription className="text-green-400">
-                OpenAI API is properly configured and the assistant can process requests.
+                OpenRouter API is properly configured and the assistant can process requests.
+                Using models: DeepSeek Qwen3 8B (Primary) with Mixtral 8x7B (Fallback).
               </AlertDescription>
             </Alert>
           )}

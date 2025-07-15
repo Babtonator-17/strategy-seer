@@ -46,7 +46,7 @@ const AIAssistantHeader: React.FC<AIAssistantHeaderProps> = ({
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
-                <p>OpenAI API key is missing or invalid. Add it in Settings.</p>
+                <p>OpenRouter API key is missing or invalid. AI features may not work properly.</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

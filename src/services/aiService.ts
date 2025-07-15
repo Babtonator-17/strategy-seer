@@ -40,13 +40,9 @@ export enum AccountType {
 }
 
 /**
- * OpenAI configuration
+ * AI Configuration - Uses OpenRouter instead of OpenAI
+ * Configuration is handled via Supabase Edge Function secrets
  */
-export interface OpenAIConfig {
-  apiKey: string;
-  model: string;
-  enabled: boolean;
-}
 
 /**
  * News article interface
@@ -64,12 +60,6 @@ export interface NewsArticle {
   instruments?: string[];
 }
 
-let openAIConfig: OpenAIConfig = {
-  apiKey: '',
-  model: 'gpt-4o',
-  enabled: false
-};
-
 // Cache for news data to avoid excessive API calls
 const newsCache: {
   data: NewsArticle[];
@@ -78,27 +68,6 @@ const newsCache: {
   data: [],
   timestamp: 0
 };
-
-/**
- * Set OpenAI configuration for enhanced analysis
- */
-export const configureOpenAI = (config: OpenAIConfig): void => {
-  openAIConfig = {
-    ...config,
-    enabled: Boolean(config.apiKey)
-  };
-};
-
-/**
- * Get OpenAI configuration
- */
-export const getOpenAIConfig = (): OpenAIConfig => {
-  return { ...openAIConfig };
-};
-
-/**
- * Fetch market news - this would connect to a real news API in production
- */
 export const fetchMarketNews = async (
   instruments?: string[],
   limit: number = 10
@@ -222,44 +191,8 @@ export const generateAIResponse = async (query: string): Promise<string> => {
     console.error('Failed to fetch news for AI context:', error);
   }
   
-  // If OpenAI is enabled, use it for more sophisticated responses
-  if (openAIConfig.enabled && openAIConfig.apiKey) {
-    try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${openAIConfig.apiKey}`
-        },
-        body: JSON.stringify({
-          model: openAIConfig.model,
-          messages: [
-            {
-              role: 'system',
-              content: `You are an AI trading assistant that provides analysis and recommendations. 
-                        Current positions: ${JSON.stringify(positionsData)}. 
-                        Latest market news: ${JSON.stringify(newsData)}.
-                        Answer concisely but thoroughly, focusing on trading insights and analysis.`
-            },
-            {
-              role: 'user',
-              content: query
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 1000
-        })
-      });
-      
-      const data = await response.json();
-      if (data.choices && data.choices.length > 0) {
-        return data.choices[0].message.content;
-      }
-    } catch (error) {
-      console.error('OpenAI API error:', error);
-      // Fall back to mock responses if OpenAI fails
-    }
-  }
+  // AI functionality is now handled by OpenRouter via Supabase Edge Functions
+  // This service now focuses on demo data and market analysis
   
   // Context-aware responses based on query
   if (query.toLowerCase().includes('news') || query.toLowerCase().includes('latest')) {

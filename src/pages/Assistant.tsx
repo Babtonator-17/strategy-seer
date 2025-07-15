@@ -29,7 +29,7 @@ const Assistant = () => {
         notifyConfigurationStatus(configStatus);
         
         if (!configStatus.openaiKeyValid && !configStatus.checkingOpenAI) {
-          setConfigError("OpenAI API key is missing or invalid. The AI assistant may not work properly.");
+          setConfigError("OpenRouter API key is missing or invalid. The AI assistant may not work properly.");
         }
       } catch (err) {
         console.error("Error checking configuration:", err);

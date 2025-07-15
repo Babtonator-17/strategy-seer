@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BrokerConnectionForm } from '@/components/settings/BrokerConnectionForm';
-import OpenAIConfigForm from '@/components/settings/OpenAIConfigForm';
+
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('broker');
@@ -17,18 +17,13 @@ const Settings = () => {
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-3 w-full max-w-md">
+          <TabsList className="grid grid-cols-2 w-full max-w-md">
             <TabsTrigger value="broker">Broker</TabsTrigger>
-            <TabsTrigger value="ai">AI Settings</TabsTrigger>
             <TabsTrigger value="preferences">Preferences</TabsTrigger>
           </TabsList>
           
           <TabsContent value="broker" className="space-y-4">
             <BrokerConnectionForm />
-          </TabsContent>
-          
-          <TabsContent value="ai" className="space-y-4">
-            <OpenAIConfigForm />
           </TabsContent>
           
           <TabsContent value="preferences" className="space-y-4">
