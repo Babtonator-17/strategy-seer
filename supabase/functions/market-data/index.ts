@@ -640,4 +640,4 @@ function generateMarketSummary(marketData: any) {
   });
   
   return summary;
-});
+}
