@@ -504,7 +504,7 @@ serve(async (req) => {
       }
     );
   }
-}
+});
 
 async function fetchTimeSeriesData(symbol: string, timeframe: string, accountType: string) {
   if (accountType === 'demo') {
