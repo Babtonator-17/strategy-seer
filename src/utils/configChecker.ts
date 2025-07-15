@@ -47,12 +47,12 @@ export const checkConfiguration = async (): Promise<ConfigStatus> => {
     status.openaiKeyValid = data?.valid || false;
     
     if (!status.openaiKeyValid && data?.error) {
-      status.error = `OpenAI API key issue: ${data.error}`;
-      console.error("OpenAI key error:", data.error);
+      status.error = `OpenRouter API key issue: ${data.error}`;
+      console.error("OpenRouter key error:", data.error);
     }
   } catch (err: any) {
-    console.error("OpenAI key check error:", err);
-    status.error = `Error checking OpenAI key: ${err.message}`;
+    console.error("OpenRouter key check error:", err);
+    status.error = `Error checking OpenRouter key: ${err.message}`;
   } finally {
     status.checkingOpenAI = false;
   }
@@ -74,8 +74,8 @@ export const notifyConfigurationStatus = (status: ConfigStatus): void => {
   
   if (!status.openaiKeyValid && !status.checkingOpenAI) {
     toast({
-      title: "OpenAI API Key Issue",
-      description: "The OpenAI API key is missing or invalid. AI features will not work properly.",
+      title: "OpenRouter API Key Issue",
+      description: "The OpenRouter API key is missing or invalid. AI features will not work properly.",
       variant: "destructive"
     });
   }

@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 // Get API key from environment variables
-const apiKey = Deno.env.get("OPENAI_API_KEY");
+const apiKey = Deno.env.get("OPENROUTER_API_KEY");
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -22,7 +22,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         valid: false, 
-        error: "OpenAI API key is not configured in Supabase secrets" 
+        error: "OpenRouter API key is not configured in Supabase secrets" 
       }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -32,11 +32,13 @@ serve(async (req) => {
   }
 
   try {
-    // Make a simple request to OpenAI API to verify the key
-    const response = await fetch("https://api.openai.com/v1/models", {
+    // Make a simple request to OpenRouter API to verify the key
+    const response = await fetch("https://openrouter.ai/api/v1/models", {
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        "HTTP-Referer": "https://strategyseer.ai",
+        "X-Title": "StrategySeer AI Trading Assistant"
       },
     });
 
@@ -50,17 +52,17 @@ serve(async (req) => {
       );
     } else {
       // Key is invalid or another issue occurred
-      console.error("OpenAI API Error:", data);
+      console.error("OpenRouter API Error:", data);
       return new Response(
         JSON.stringify({ 
           valid: false, 
-          error: data.error?.message || "Invalid OpenAI API key" 
+          error: data.error?.message || "Invalid OpenRouter API key" 
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
   } catch (error) {
-    console.error("Error verifying OpenAI API key:", error);
+    console.error("Error verifying OpenRouter API key:", error);
     return new Response(
       JSON.stringify({ 
         valid: false, 
