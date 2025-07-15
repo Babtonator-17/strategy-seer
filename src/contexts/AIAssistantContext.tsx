@@ -324,7 +324,7 @@ export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ childr
         }
       }
       
-      const { data, error } = await supabase.functions.invoke('ai-assistant', {
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
         body: { 
           query: userMessage.content,
           conversationId,
